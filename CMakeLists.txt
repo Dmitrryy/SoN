@@ -1,12 +1,15 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.16)
 
 
 project(son_ir)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
-add_executable(son
-    main.cpp
+include(cmake/list_dirs.cmake)
+include(cmake/upd_tar_list.cmake)
+include(cmake/CPM.cmake)
+include(cmake/comp_flags.cmake)
 
-    src/Node.cpp
-)
+
+enable_testing()
+add_subdirectory(tests)

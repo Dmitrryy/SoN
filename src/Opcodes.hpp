@@ -1,70 +1,26 @@
 #pragma once
 
+#include <string>
+
 namespace son {
 
 enum class NodeType {
-    UNKNOWN,
-    BinOp,
-    UnOp,
-    Const,
-    // Start,
-    // End,
-    // Ret,
-    // Region,
-    // IF,
-    // JMP,
-    Control,
-    Region,
-    PHI,
-    Projection
+#define NODE_OPCODE_DEFINE(opc_name) opc_name,
+#include "Opcodes.def"
+#undef NODE_OPCODE_DEFINE
+  LastOpcode
 };
 
-enum class ControlNodeOp {
-    UNKNOWN,
-    // Region,
-    Jmp,
-    If,
-    Return,
-    Projection
-};
+constexpr auto getOpcName(NodeType opc) {
+  switch (opc) {
+#define NODE_OPCODE_DEFINE(opc_name)                                           \
+  case NodeType::opc_name:                                                   \
+    return #opc_name;
+#include "Opcodes.def"
+#undef NODE_OPCODE_DEFINE
+  }
+}
 
-enum class BinOpIntrs {
-    UNKNOWN,
-    ADD,
-    SUB,
-    DIV,
-    MUL,
-    REM,
-    CMP,
-    //
-    AND,
-    OR,
-    XOR,
-};
-
-enum class UnOpInstrs {
-    UNKNOWN,
-    NOT,
-    NEG,
-};
-
-enum class CmpOpInstrs {
-    UNKNOWN,
-    EQ,
-    NE,
-    LT,
-    LE,
-    GT,
-    GE,
-};
-
-enum class Type {
-    Void,
-    Int32,
-    UInt32,
-    Int64,
-    UInt64,
-    Ptr
-};
+enum class ValueType { Void, Int1, Int8, Int32, Int64, Ptr };
 
 } // namespace son
