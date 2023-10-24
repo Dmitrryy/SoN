@@ -20,7 +20,7 @@ class Function;
 class Value {
   ValueType m_valType = ValueType::Void;
   NodeType m_nodeType = NodeType::Unknown;
-  std::list<User *> m_useList;
+  std::vector<User *> m_useList;
 
   friend User;
 
@@ -35,6 +35,7 @@ public:
   const auto getNodeType() const noexcept { return m_nodeType; }
   const auto getValueType() const noexcept { return m_valType; }
   const auto &getUses() const noexcept { return m_useList; }
+  const auto getNumUses() const noexcept { return m_useList.size(); }
 
 protected:
   void addUse(User &U) { m_useList.push_back(&U); }
@@ -97,45 +98,7 @@ public:
 }; // FunctionArgNode
 
 //=------------------------------------------------------------------
-// bin operations
-class AddNode : public User {
-  friend Function;
-
-public:
-  AddNode(Value *lhs, Value *rhs)
-      : User(NodeType::Add, lhs->getValueType(), 2) {
-    assert(lhs->getValueType() == rhs->getValueType());
-    setOperand(0, lhs);
-    setOperand(1, rhs);
-  }
-}; // AddNode
-
-//=------------------------------------------------------------------
-// cmp operations
-class CmpEQNode : public User {
-  friend Function;
-
-public:
-  CmpEQNode(Value *lhs, Value *rhs)
-      : User(NodeType::CmpEQ, ValueType::Int1, 2) {
-    assert(lhs->getValueType() == rhs->getValueType());
-    setOperand(0, lhs);
-    setOperand(0, rhs);
-  }
-}; // NotNode
-
-//=------------------------------------------------------------------
 // un operations
-class NotNode : public User {
-  friend Function;
-
-public:
-  NotNode(Value *operand) : User(NodeType::Not, operand->getValueType(), 1) {
-    assert(operand->getValueType() != ValueType::Void);
-    setOperand(0, operand);
-  }
-}; // NotNode
-
 class TrunkNode : public User {
   friend Function;
 
@@ -146,7 +109,79 @@ public:
     // TODO: check that new size lower: assert(???);
     setOperand(0, operand);
   }
+}; // TrunkNode
+
+class ZextNode : public User {
+  friend Function;
+
+public:
+  ZextNode(Value *operand, ValueType resType)
+      : User(NodeType::Zext, resType, 1) {
+    assert(operand->getValueType() != ValueType::Void);
+    assert(resType != ValueType::Void);
+    // TODO: check that new size larger: assert(???);
+    setOperand(0, operand);
+  }
+}; // ZextNode
+
+class SextNode : public User {
+  friend Function;
+
+public:
+  SextNode(Value *operand, ValueType resType)
+      : User(NodeType::Sext, resType, 1) {
+    assert(operand->getValueType() != ValueType::Void);
+    assert(resType != ValueType::Void);
+    // TODO: check that new size larger: assert(???);
+    setOperand(0, operand);
+  }
+}; // SextNode
+
+class NotNode : public User {
+  friend Function;
+
+public:
+  NotNode(Value *operand) : User(NodeType::Not, operand->getValueType(), 1) {
+    assert(operand->getValueType() != ValueType::Void);
+    setOperand(0, operand);
+  }
 }; // NotNode
+
+class NegNode : public User {
+  friend Function;
+
+public:
+  NegNode(Value *operand) : User(NodeType::Neg, operand->getValueType(), 1) {
+    assert(operand->getValueType() != ValueType::Void);
+    setOperand(0, operand);
+  }
+}; // NegNode
+
+//=------------------------------------------------------------------
+// bin operations
+class BinOpNode : public User {
+protected:
+  BinOpNode(Value *lhs, Value *rhs, NodeType op)
+      : User(op, lhs->getValueType(), 2) {
+    assert(lhs->getValueType() == rhs->getValueType());
+    setOperand(0, lhs);
+    setOperand(1, rhs);
+  }
+}; // class BinOpNode
+
+#define NODE_OPCODE_BIN_DEFINE
+#define NODE_OPCODE_DEFINE(opc_name)                                           \
+  class opc_name##Node : public BinOpNode {                                    \
+    friend Function;                                                           \
+                                                                               \
+  public:                                                                      \
+    opc_name##Node(Value *lhs, Value *rhs)                                     \
+        : BinOpNode(lhs, rhs, NodeType::opc_name) {}                           \
+  };
+
+#include "Opcodes.def"
+#undef NODE_OPCODE_DEFINE
+#undef NODE_OPCODE_BIN_DEFINE
 
 //=------------------------------------------------------------------
 // control flow nodes
@@ -237,5 +272,18 @@ public:
   }
   void setInputCF(CFNode *input) { setOperand(0, input); }
 }; // class IfFalseNode
+
+class RetNode : public CFNode {
+  friend Function;
+
+public:
+  RetNode() : CFNode(NodeType::Ret, ValueType::Void, 0) {}
+  RetNode(Value *val) : CFNode(NodeType::Ret, val->getValueType(), 1) {
+    setRetValue(val);
+  }
+
+  void setRetValue(Value *val) { setOperand(0, val); }
+  auto getRetValue() { return getOperand(0); }
+};
 
 } // namespace son
