@@ -26,6 +26,7 @@ foreach(DIR ${UNIT_DIRS})
 endforeach()
 
 message(STATUS "Collected unit tests: ${TESTLIST}")
+message(STATUS "Collected libs: ${LIBLIST}")
 
 foreach(TEST ${TESTLIST})
   target_include_directories(${TEST} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

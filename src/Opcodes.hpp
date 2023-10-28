@@ -1,10 +1,15 @@
 #pragma once
 
 #include <string>
+#include <memory>
+#include <cassert>
 
 namespace son {
 
+enum class ValueType { Void, Int1, Int8, Int32, Int64, Ptr };
+
 enum class NodeType {
+  Unknown,
 #define NODE_OPCODE_ALL_DEFINE
 #define NODE_OPCODE_DEFINE(opc_name) opc_name,
 #include "Opcodes.def"
@@ -13,16 +18,17 @@ enum class NodeType {
   LastOpcode
 };
 
-constexpr auto getOpcName(NodeType opc) {
+static std::string getOpcName(NodeType opc) {
   switch (opc) {
 #define NODE_OPCODE_ALL_DEFINE
 #define NODE_OPCODE_DEFINE(opc_name)                                           \
-  case NodeType::opc_name:                                                   \
+  case NodeType::opc_name:                                                     \
     return #opc_name;
 #include "Opcodes.def"
 #undef NODE_OPCODE_DEFINE
 #undef NODE_OPCODE_ALL_DEFINE
   }
+  return "UNKNOWN";
 }
 
 constexpr bool isRegionTerminator(NodeType opc) {
@@ -99,6 +105,11 @@ struct isa_impl_cl<To, const From *const> {
 template <typename To, typename From>
 [[nodiscard]] inline bool isa(const From &Val) {
   return isa_impl_cl<To, const From>::doit(Val);
+}
+
+template <typename First, typename Second, typename... Rest, typename From>
+[[nodiscard]] inline bool isa(const From &Val) {
+  return isa<First>(Val) || isa<Second, Rest...>(Val);
 }
 
 } // namespace son

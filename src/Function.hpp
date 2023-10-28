@@ -23,7 +23,7 @@ class Function final {
   std::unique_ptr<EndNode> m_end;
   std::vector<FunctionArgNode *> m_args;
 
-  std::vector<std::unique_ptr<Value>> m_graph;
+  std::vector<std::unique_ptr<Node>> m_graph;
 
 public:
   Function(std::string name, FunctionType fnType)
@@ -55,6 +55,16 @@ public:
 
   auto getArg(size_t id) { return m_args.at(id); }
   auto getNumArgs() const { return m_args.size(); }
+
+  auto begin() { return m_graph.begin(); }
+  auto end() { return m_graph.end(); }
+
+  //=------------------------------------------------------------------
+  // ALGORITHMS
+  //=------------------------------------------------------------------
+  bool verify();
+
+  std::vector<std::pair<Node *, size_t>> dfs() const;
 };
 
 } // namespace son

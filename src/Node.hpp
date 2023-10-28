@@ -6,164 +6,225 @@
 #include <algorithm>
 #include <cassert>
 #include <list>
+#include <unordered_set>
 #include <vector>
 
 namespace son {
 
 class User;
 class Function;
+class CFNode;
+class RegionNode;
+class PhiNode;
 
 //=------------------------------------------------------------------
 // data nodes
 //=------------------------------------------------------------------
 
-class Value {
+class Node {
+  // Inputs
+  std::vector<Node *> m_operands;
+  // Outputs
+  // We should rapidly remove and add users, but order is not important.
+  std::unordered_set<Node *> m_users;
+
   ValueType m_valType = ValueType::Void;
   NodeType m_nodeType = NodeType::Unknown;
-  std::vector<User *> m_useList;
-
-  friend User;
 
 protected:
-  // Value() = default;
-  Value(NodeType nodeType, ValueType valType)
-      : m_nodeType(nodeType), m_valType(valType) {}
+  Node(NodeType nTy) : m_nodeType(nTy) {}
+  Node(NodeType nTy, ValueType vTy) : m_nodeType(nTy), m_valType(vTy) {}
+  Node(NodeType nTy, ValueType vTy, size_t nOperands)
+      : m_operands(nOperands, nullptr), m_valType(vTy), m_nodeType(nTy) {}
 
 public:
-  virtual ~Value() = default;
+  virtual ~Node() = default;
 
-  const auto getNodeType() const noexcept { return m_nodeType; }
-  const auto getValueType() const noexcept { return m_valType; }
-  const auto &getUses() const noexcept { return m_useList; }
-  const auto getNumUses() const noexcept { return m_useList.size(); }
+public:
+  const auto nodeTy() const noexcept { return m_nodeType; }
+  const auto valueTy() const noexcept { return m_valType; }
+
+  auto opCount() const noexcept { return m_operands.size(); }
+  const auto &operands() const noexcept { return m_operands; }
+  auto operand(size_t idx) const { return m_operands[idx]; }
+  auto usersCount() const noexcept { return m_users.size(); }
+  const auto &users() const noexcept { return m_users; }
 
 protected:
-  void addUse(User &U) { m_useList.push_back(&U); }
-  void eraseUse(User &U) {
-    auto &&it = std::find(m_useList.begin(), m_useList.end(), &U);
-    m_useList.erase(it);
+  auto addOperand(Node *operand) {
+    auto idx = m_operands.size();
+    m_operands.push_back(operand);
+
+    // register the usage of operand
+    operand->m_users.emplace(this);
+    return idx;
   }
-}; // class Value
-
-class User : public Value {
-  std::vector<Value *> m_operands;
-
-public:
-  User(NodeType nodeType, ValueType valType, size_t numOps)
-      : Value(nodeType, valType), m_operands(numOps, nullptr) {}
-
-  auto getNumOperands() const { return m_operands.size(); }
-  auto getOperand(size_t id) const { return m_operands.at(id); }
-  auto setOperand(size_t id, Value *val) {
-    if (auto *OldOp = m_operands.at(id)) {
-      OldOp->eraseUse(*this);
+  void setOperand(size_t idx, Node *operand) {
+    // remove usage of previous operand
+    auto &&opPlace = m_operands.at(idx);
+    if (opPlace != nullptr) {
+      opPlace->m_users.erase(this);
     }
-    val->addUse(*this);
-    return m_operands.at(id) = val;
+    // sometimes we want remain operand empty for a while
+    if (operand != nullptr) {
+      operand->m_users.emplace(this);
+    }
+    opPlace = operand;
   }
 
-protected:
-  void addOperand(Value *val) {
-    val->addUse(*this);
-    m_operands.push_back(val);
+  // NOTE: expensive operation.
+  Node *removeOperand(size_t idx) {
+    auto *operand = m_operands.at(idx);
+    if (operand != nullptr) {
+      operand->m_users.erase(this);
+    }
+
+    m_operands.erase(m_operands.begin() + idx);
+    return operand;
   }
-}; // class User
+
+  void setValueType(ValueType vTy) { m_valType = vTy; }
+}; // class Node
 
 //=------------------------------------------------------------------
 // constant
 // class UnknownNode : public Value {};
 
-template <typename T, ValueType ValTy> class ConstantNode : public Value {
-  T m_val = {};
+class ConstantNode : public Node {
+  uint64_t m_val = {};
   friend Function;
 
 public:
-  ConstantNode(T val) : Value(NodeType::Constant, ValTy), m_val(val) {}
+  ConstantNode(ValueType vTy, uint64_t val)
+      : Node(NodeType::Constant, vTy), m_val(val) {}
 
-  void setConstant(T val) { m_val = val; }
-  T getConstant() const { return m_val; }
+  void setConstant(uint64_t val) { m_val = val; }
+  uint64_t getConstant() const { return m_val; }
+
+  static bool classof(const Node *node) noexcept {
+    return node->nodeTy() == NodeType::Constant;
+  }
 };
 
-using CInt8Node = ConstantNode<int8_t, ValueType::Int32>;
-using CInt32Node = ConstantNode<int32_t, ValueType::Int32>;
-using CInt64Node = ConstantNode<int64_t, ValueType::Int64>;
+// using CInt8Node = ConstantNode<int8_t, ValueType::Int8>;
+// using CInt32Node = ConstantNode<int32_t, ValueType::Int32>;
+// using CInt64Node = ConstantNode<int64_t, ValueType::Int64>;
 
 //=------------------------------------------------------------------
 // function
-class FunctionArgNode : public Value {
+class FunctionArgNode : public Node {
   friend Function;
 
 public:
-  FunctionArgNode(ValueType type) : Value(NodeType::FunctionArg, type) {}
+  FunctionArgNode(ValueType type) : Node(NodeType::FunctionArg, type) {}
+
+  static bool classof(const Node *node) noexcept {
+    return node->nodeTy() == NodeType::FunctionArg;
+  }
 }; // FunctionArgNode
 
 //=------------------------------------------------------------------
-// un operations
-class TrunkNode : public User {
+// cast operations
+class CastOperationNode : public Node {
+  ValueType m_dstTy = ValueType::Void;
+  ValueType m_srcTy = ValueType::Void;
+
+protected:
+  CastOperationNode(NodeType nTy, Node *val, ValueType srcTy, ValueType dstTy)
+      : Node(nTy, dstTy, 1), m_dstTy(dstTy), m_srcTy(srcTy) {}
+
+public:
+  auto value() const noexcept { return operand(0); }
+  void setValue(Node *val) { setOperand(0, val); }
+  auto dstTy() const noexcept { return m_dstTy; }
+  auto srcTy() const noexcept { return m_srcTy; }
+};
+
+class TrunkNode : public CastOperationNode {
   friend Function;
 
 public:
-  TrunkNode(Value *operand, ValueType resType)
-      : User(NodeType::Trunk, resType, 1) {
-    assert(operand->getValueType() != ValueType::Void);
-    // TODO: check that new size lower: assert(???);
-    setOperand(0, operand);
+  TrunkNode(Node *operand, ValueType resTy)
+      : CastOperationNode(NodeType::Trunk, operand, operand->valueTy(), resTy) {
+  }
+
+  static bool classof(const Node *node) noexcept {
+    return node->nodeTy() == NodeType::Trunk;
   }
 }; // TrunkNode
 
-class ZextNode : public User {
+class ZextNode : public CastOperationNode {
   friend Function;
 
 public:
-  ZextNode(Value *operand, ValueType resType)
-      : User(NodeType::Zext, resType, 1) {
-    assert(operand->getValueType() != ValueType::Void);
-    assert(resType != ValueType::Void);
-    // TODO: check that new size larger: assert(???);
-    setOperand(0, operand);
+  ZextNode(Node *operand, ValueType resTy)
+      : CastOperationNode(NodeType::Zext, operand, operand->valueTy(), resTy) {}
+
+  static bool classof(const Node *node) noexcept {
+    return node->nodeTy() == NodeType::Zext;
   }
 }; // ZextNode
 
-class SextNode : public User {
+class SextNode : public CastOperationNode {
   friend Function;
 
 public:
-  SextNode(Value *operand, ValueType resType)
-      : User(NodeType::Sext, resType, 1) {
-    assert(operand->getValueType() != ValueType::Void);
-    assert(resType != ValueType::Void);
-    // TODO: check that new size larger: assert(???);
-    setOperand(0, operand);
+  SextNode(Node *operand, ValueType resTy)
+      : CastOperationNode(NodeType::Sext, operand, operand->valueTy(), resTy) {}
+
+  static bool classof(const Node *node) noexcept {
+    return node->nodeTy() == NodeType::Sext;
   }
 }; // SextNode
 
-class NotNode : public User {
+class BitCastNode : public CastOperationNode {
   friend Function;
 
 public:
-  NotNode(Value *operand) : User(NodeType::Not, operand->getValueType(), 1) {
-    assert(operand->getValueType() != ValueType::Void);
+  BitCastNode(Node *operand, ValueType resTy)
+      : CastOperationNode(NodeType::Sext, operand, operand->valueTy(), resTy) {}
+
+  static bool classof(const Node *node) noexcept {
+    return node->nodeTy() == NodeType::Sext;
+  }
+}; // SextNode
+
+//=------------------------------------------------------------------
+// un operations
+class NotNode : public Node {
+  friend Function;
+
+public:
+  NotNode(Node *operand) : Node(NodeType::Not, operand->valueTy(), 1) {
+    assert(operand->valueTy() != ValueType::Void);
     setOperand(0, operand);
+  }
+
+  static bool classof(const Node *node) noexcept {
+    return node->nodeTy() == NodeType::Not;
   }
 }; // NotNode
 
-class NegNode : public User {
+class NegNode : public Node {
   friend Function;
 
 public:
-  NegNode(Value *operand) : User(NodeType::Neg, operand->getValueType(), 1) {
-    assert(operand->getValueType() != ValueType::Void);
+  NegNode(Node *operand) : Node(NodeType::Neg, operand->valueTy(), 1) {
+    assert(operand->valueTy() != ValueType::Void);
     setOperand(0, operand);
+  }
+
+  static bool classof(const Node *node) noexcept {
+    return node->nodeTy() == NodeType::Neg;
   }
 }; // NegNode
 
 //=------------------------------------------------------------------
 // bin operations
-class BinOpNode : public User {
+class BinOpNode : public Node {
 protected:
-  BinOpNode(Value *lhs, Value *rhs, NodeType op)
-      : User(op, lhs->getValueType(), 2) {
-    assert(lhs->getValueType() == rhs->getValueType());
+  BinOpNode(Node *lhs, Node *rhs, NodeType op) : Node(op, lhs->valueTy(), 2) {
+    assert(lhs->valueTy() == rhs->valueTy());
     setOperand(0, lhs);
     setOperand(1, rhs);
   }
@@ -175,8 +236,11 @@ protected:
     friend Function;                                                           \
                                                                                \
   public:                                                                      \
-    opc_name##Node(Value *lhs, Value *rhs)                                     \
+    opc_name##Node(Node *lhs, Node *rhs)                                       \
         : BinOpNode(lhs, rhs, NodeType::opc_name) {}                           \
+    static bool classof(const Node *node) noexcept {                           \
+      return node->nodeTy() == NodeType::opc_name;                             \
+    }                                                                          \
   };
 
 #include "Opcodes.def"
@@ -184,21 +248,69 @@ protected:
 #undef NODE_OPCODE_BIN_DEFINE
 
 //=------------------------------------------------------------------
+// bin operations
+class CmpNode : public Node {
+protected:
+  CmpNode(Node *lhs, Node *rhs, NodeType op) : Node(op, ValueType::Int1, 2) {
+    assert(lhs->valueTy() == rhs->valueTy());
+    setOperand(0, lhs);
+    setOperand(1, rhs);
+  }
+}; // class BinOpNode
+
+#define NODE_OPCODE_CMP_DEFINE
+#define NODE_OPCODE_DEFINE(opc_name)                                           \
+  class opc_name##Node : public CmpNode {                                      \
+    friend Function;                                                           \
+                                                                               \
+  public:                                                                      \
+    opc_name##Node(Node *lhs, Node *rhs)                                       \
+        : CmpNode(lhs, rhs, NodeType::opc_name) {}                             \
+    static bool classof(const Node *node) noexcept {                           \
+      return node->nodeTy() == NodeType::opc_name;                             \
+    }                                                                          \
+  };
+#include "Opcodes.def"
+#undef NODE_OPCODE_DEFINE
+#undef NODE_OPCODE_CMP_DEFINE
+
+//=------------------------------------------------------------------
 // control flow nodes
 //=------------------------------------------------------------------
-class CFNode : public User {
+class CFNode : public Node {
   friend Function;
 
 public:
   CFNode(NodeType nodeType, ValueType valType, size_t numOps)
-      : User(nodeType, valType, numOps) {}
+      : Node(nodeType, valType, numOps) {}
 };
+
+class RegionNode : public CFNode {
+  friend Function;
+
+public:
+  RegionNode() : CFNode(NodeType::Region, ValueType::Void, 0) {}
+
+  void addCFInput(CFNode *input) { addOperand(input); }
+
+  std::vector<PhiNode *> phis() const;
+  CFNode *terminator() const;
+  auto predicessors() const { return operands(); }
+  std::vector<CFNode *> successors() const;
+
+  static bool classof(const Node *node) noexcept {
+    return node->nodeTy() == NodeType::Region;
+  }
+}; // class RegionNode
 
 class StartNode : public CFNode {
   friend Function;
 
 public:
   StartNode() : CFNode(NodeType::Start, ValueType::Void, 0) {}
+  static bool classof(const Node *node) noexcept {
+    return node->nodeTy() == NodeType::Start;
+  }
 }; // class StartNode
 
 class EndNode : public CFNode {
@@ -209,46 +321,32 @@ public:
 
   // operand[0...] - input control flows
   void addCFInput(CFNode *input) { addOperand(input); }
-
+  static bool classof(const Node *node) noexcept {
+    return node->nodeTy() == NodeType::End;
+  }
 }; // class EndNode
 
-class RangeNode : public CFNode {
-  friend Function;
-
-public:
-  RangeNode() : CFNode(NodeType::End, ValueType::Void, 0) {}
-
-  void addCFInput(CFNode *input) { addOperand(input); }
-}; // class RangeNode
-
-class PhiNode : public CFNode {
-  friend Function;
-
-public:
-  PhiNode(CFNode *inputCF, size_t numInputs, ValueType type)
-      : CFNode(NodeType::Phi, type, numInputs + 1) {
-    setOperand(0, inputCF);
-  }
-
-  void setVal(size_t id, Value *val) { setOperand(id + 1, val); }
-
-  void setInput(size_t id, Value *val) { setVal(id, val); }
-}; // class PhiNode
-
+//=------------------------------------------------------------------
+// control: If, Jmp, Ret
 class IfNode : public CFNode {
   friend Function;
 
 public:
   // operand[0]{CFNode} - input control flow
   // operand[1]{Value} - condition
-  IfNode(CFNode *input, Value *cond)
-      : CFNode(NodeType::If, ValueType::Void, 2) {
+  IfNode(CFNode *input, Node *cond) : CFNode(NodeType::If, ValueType::Void, 2) {
     setInputCF(input);
     setCondition(cond);
   }
 
   void setInputCF(CFNode *input) { setOperand(0, input); }
-  void setCondition(Value *cond) { setOperand(1, cond); }
+  auto getInputCF() const { return operand(0); }
+  void setCondition(Node *cond) { setOperand(1, cond); }
+  auto getCondition() const { return operand(1); }
+
+  static bool classof(const Node *node) noexcept {
+    return node->nodeTy() == NodeType::If;
+  }
 }; // class IfNode
 
 class IfFalseNode : public CFNode {
@@ -260,6 +358,10 @@ public:
     setInputCF(input);
   }
   void setInputCF(CFNode *input) { setOperand(0, input); }
+
+  static bool classof(const Node *node) noexcept {
+    return node->nodeTy() == NodeType::IfFalse;
+  }
 }; // class IfFalseNode
 
 class IfTrueNode : public CFNode {
@@ -271,19 +373,66 @@ public:
     setInputCF(input);
   }
   void setInputCF(CFNode *input) { setOperand(0, input); }
+
+  static bool classof(const Node *node) noexcept {
+    return node->nodeTy() == NodeType::IfTrue;
+  }
 }; // class IfFalseNode
+
+class JmpNode : public CFNode {
+  friend Function;
+
+public:
+  JmpNode(CFNode *input) : CFNode(NodeType::Jmp, ValueType::Void, 1) {
+    setOperand(0, input);
+  }
+  static bool classof(const Node *node) noexcept {
+    return node->nodeTy() == NodeType::Jmp;
+  }
+}; // class JmpNode
 
 class RetNode : public CFNode {
   friend Function;
 
 public:
-  RetNode() : CFNode(NodeType::Ret, ValueType::Void, 0) {}
-  RetNode(Value *val) : CFNode(NodeType::Ret, val->getValueType(), 1) {
+  RetNode(CFNode *input) : CFNode(NodeType::Ret, ValueType::Void, 1) {}
+  RetNode(CFNode *input, Node *val)
+      : CFNode(NodeType::Ret, ValueType::Void, 2) {
     setRetValue(val);
   }
 
-  void setRetValue(Value *val) { setOperand(0, val); }
-  auto getRetValue() { return getOperand(0); }
-};
+  void setRetValue(Node *val) { setOperand(1, val); }
+  auto getRetValue() { return operand(1); }
+  auto retTy() const {
+    return (opCount() == 1) ? ValueType::Void : operand(1)->valueTy();
+  }
+  static bool classof(const Node *node) noexcept {
+    return node->nodeTy() == NodeType::Ret;
+  }
+}; // class RetNode
+
+//=------------------------------------------------------------------
+// Phi node
+class PhiNode : public Node {
+  friend Function;
+
+public:
+  PhiNode(RegionNode *inputCF, size_t numInputs, ValueType type)
+      : Node(NodeType::Phi, type, numInputs + 1) {
+    setOperand(0, inputCF);
+  }
+
+  auto numVals() const noexcept { return opCount() - 1; }
+  void setVal(size_t id, Node *val) { setOperand(id + 1, val); }
+  Node *getVal(size_t id) const { return operand(id + 1); }
+  void setInput(RegionNode *val) { setOperand(0, val); }
+  RegionNode *getInput() const {
+    return dynamic_cast<RegionNode *>(operand(0));
+  }
+
+  static bool classof(const Node *node) noexcept {
+    return node->nodeTy() == NodeType::Phi;
+  }
+}; // class PhiNode
 
 } // namespace son
