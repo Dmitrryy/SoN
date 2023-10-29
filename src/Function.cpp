@@ -153,11 +153,10 @@ static void _compress(size_t vDFS, std::vector<size_t> &ancestors,
   if (ancestors[ancestors[vDFS]] != 0) {
     // FIXME: recursion
     _compress(ancestors[vDFS], ancestors, labels, semi);
-    auto &vAnc = ancestors[vDFS];
-    if (semi[labels[vAnc]] < semi[labels[vDFS]]) {
-      labels[vDFS] = labels[vAnc];
+    if (semi[labels[ancestors[vDFS]]] < semi[labels[vDFS]]) {
+      labels[vDFS] = labels[ancestors[vDFS]];
     }
-    vAnc = ancestors[vAnc];
+    ancestors[vDFS] = ancestors[ancestors[vDFS]];
   }
 }
 
@@ -172,6 +171,10 @@ static size_t _eval(size_t vDFS, std::vector<size_t> &ancestors,
 
   // perform path compression
   _compress(vDFS, ancestors, labels, semi);
+
+  // if (semi[labels[vDFS]] > semi[labels[ancestors[vDFS]]]) {
+  //   return labels[ancestors[vDFS]];
+  // }
   return labels[vDFS];
 }
 
@@ -210,6 +213,7 @@ Function::semiDominators(const DFSResultTy &dfsResult) const {
   std::iota(semi.begin(), semi.end(), 0);
 
   auto ancestors = dfsParents;
+  // std::vector<size_t> ancestors(N, 0);
   std::vector<size_t> labels(N);
   std::iota(labels.begin(), labels.end(), 0);
 
@@ -223,7 +227,7 @@ Function::semiDominators(const DFSResultTy &dfsResult) const {
         semi[vDFS] = std::min(semi[vDFS], semi[uDFS]);
       } else {
         // search `u'`
-        // uDFS = _eval(uDFS, ancestors, labels, semi);
+        // uDFS = _eval(vDFS, ancestors, labels, semi);
         // NOTE: we can do it faster with _eval
         while (uDFS >= vDFS) {
           uDFS = dfsParents[uDFS];
@@ -285,7 +289,8 @@ Function::iDominators(const DFSResultTy &dfsResult,
     bucket[semi[vDFS]].push_back(vDFS);
   }
 
-  auto ancestors = dfsParents;
+  // FIXME: in original paper semidominators and idmo are computed in one loop.
+  std::vector<size_t> ancestors(N, 0);
   std::vector<size_t> labels(N);
   std::iota(labels.begin(), labels.end(), 0);
   // Computing Immediate Dominators

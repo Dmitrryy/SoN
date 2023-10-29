@@ -42,8 +42,7 @@ std::vector<RegionNodeBase *> RegionNodeBase::predicessors() const {
   std::vector<RegionNodeBase *> result;
 
   for (auto &&operand : operands()) {
-    if (isa<JmpNode, RetNode>(operand)) {
-      assert(operand->opCount() == 1);
+    if (isa<JmpNode>(operand)) {
       auto *P = dynamic_cast<RegionNodeBase *>(operand->operand(0));
       assert(P);
       result.push_back(P);

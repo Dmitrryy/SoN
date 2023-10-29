@@ -108,84 +108,221 @@ std::unique_ptr<Function> buildTest0() {
   return fPtr;
 }
 
-std::unique_ptr<Function> buildTest1() {
-  FunctionType fnTy(ValueType::Void, {ValueType::Int32});
-  auto &&fPtr = std::make_unique<Function>("Test1", fnTy);
-  auto &F = *fPtr;
+//                 +-----+
+//                 |  A  |
+//                 +-----+
+//                    |
+//                    V
+//                 +-----+
+//       ----------|  B  |---------
+//       |         +-----+        |
+//       |                        |
+//       V                        V
+//     +-----+     +-----+     +-----+
+//     |  C  |  ---|  E  |<----|  F  |
+//     +-----+  |  +-----+     +-----+
+//        |     |                 |
+//        |     V                 |
+//        |  +-----+     +-----+  |
+//        +->|  D  |<----|  G  |<-+
+//           +-----+     +-----+
+// img src: https://github.com/Bryanskiy/MasterCourse.Compilers/tree/master
+#define BUILD_GRAPH_TEST1(NAME)                                                \
+  Function NAME("Hello", FunctionType(ValueType::Void, {ValueType::Int32}));   \
+                                                                               \
+  auto A = NAME.getStart();                                                    \
+  auto AJmp = NAME.createNode<JmpNode>(A);                                     \
+  auto D = NAME.getEnd();                                                      \
+  auto B = NAME.createNode<RegionNode>();                                      \
+  B->addCFInput(AJmp);                                                         \
+                                                                               \
+  /* B if*/                                                                    \
+  auto BIf = NAME.createNode<IfNode>(                                          \
+      B, NAME.createNode<ConstantNode>(ValueType::Int1, 1));                   \
+  auto BIfTrue = NAME.createNode<IfTrueNode>(BIf);                             \
+  auto BIfFalse = NAME.createNode<IfFalseNode>(BIf);                           \
+  /* C*/                                                                       \
+  auto C = NAME.createNode<RegionNode>();                                      \
+  C->addCFInput(BIfTrue);                                                      \
+  auto CJmp = NAME.createNode<JmpNode>(C);                                     \
+  /* F if*/                                                                    \
+  auto F = NAME.createNode<RegionNode>();                                      \
+  F->addCFInput(BIfFalse);                                                     \
+  auto FIf = NAME.createNode<IfNode>(                                          \
+      F, NAME.createNode<ConstantNode>(ValueType::Int1, 1));                   \
+  auto FIfTrue = NAME.createNode<IfTrueNode>(FIf);                             \
+  auto FIfFalse = NAME.createNode<IfFalseNode>(FIf);                           \
+  /* E*/                                                                       \
+  auto E = NAME.createNode<RegionNode>();                                      \
+  E->addCFInput(FIfTrue);                                                      \
+  auto EJmp = NAME.createNode<JmpNode>(E);                                     \
+  /* G*/                                                                       \
+  auto G = NAME.createNode<RegionNode>();                                      \
+  G->addCFInput(FIfFalse);                                                     \
+  auto GJmp = NAME.createNode<JmpNode>(G);                                     \
+                                                                               \
+  D->addCFInput(CJmp);                                                         \
+  D->addCFInput(EJmp);                                                         \
+  D->addCFInput(GJmp);
 
-  //                 +-----+
-  //                 |  A  |
-  //                 +-----+
-  //                    |
-  //                    V
-  //                 +-----+
-  //       ----------|  B  |---------
-  //       |         +-----+        |
-  //       |                        |
-  //       V                        V
-  //     +-----+     +-----+     +-----+
-  //     |  C  |  ---|  E  |<----|  F  |
-  //     +-----+  |  +-----+     +-----+
-  //        |     |                 |
-  //        |     V                 |
-  //        |  +-----+     +-----+  |
-  //        +->|  D  |<----|  G  |<-+
-  //           +-----+     +-----+
-  //
-  // A - start
-  // D - end
-  auto A = F.getStart();
-  auto D = F.getEnd();
+//                 +-----+
+//                 |  A  |
+//                 +-----+
+//                    V
+//                 +-----+      +-----+
+//       +-------->|  B  |----->|  J  |
+//       |         +-----+      +-----+
+//       |            V            |
+//       |         +-----+         |
+//       |   +---->|  C  |<--------+
+//       |   |     +-----+
+//       |   |        V
+//       |   |     +-----+
+//       |   +-----|  D  |
+//       |         +-----+
+//       |            V
+//       |         +-----+
+//       |         |  E  |<--------+
+//       |         +-----+         |
+//       |            V            |
+//       |         +-----+         |
+//       |         |  F  |---------+
+//       |         +-----+
+//       |            V
+//    +-----+      +-----+      +-----+
+//    |  H  |<-----|  G  |----->|  I  |
+//    +-----+      +-----+      +-----+
+//                                 |
+//                 +-----+         |
+//                 |  K  |<--------+
+//                 +-----+
+// img src: https://github.com/Bryanskiy/MasterCourse.Compilers/tree/master
+#define BUILD_GRAPH_TEST2(NAME)                                                \
+  Function NAME("Hello", FunctionType(ValueType::Void, {ValueType::Int32}));   \
+                                                                               \
+  auto A = NAME.getStart();                                                    \
+  auto AJmp = NAME.createNode<JmpNode>(A);                                     \
+  auto K = NAME.getEnd();                                                      \
+  auto B = NAME.createNode<RegionNode>();                                      \
+  B->addCFInput(AJmp);                                                         \
+                                                                               \
+  /* B if*/                                                                    \
+  auto BIf = NAME.createNode<IfNode>(                                          \
+      B, NAME.createNode<ConstantNode>(ValueType::Int1, 0));                   \
+  auto BIfTrue = NAME.createNode<IfTrueNode>(BIf);                             \
+  auto BIfFalse = NAME.createNode<IfFalseNode>(BIf);                           \
+                                                                               \
+  /* J*/                                                                       \
+  auto J = NAME.createNode<RegionNode>();                                      \
+  J->addCFInput(BIfFalse);                                                     \
+  auto JJmp = NAME.createNode<JmpNode>(J);                                     \
+                                                                               \
+  /* C*/                                                                       \
+  auto C = NAME.createNode<RegionNode>();                                      \
+  auto CJmp = NAME.createNode<JmpNode>(C);                                     \
+  C->addCFInput(BIfTrue);                                                      \
+  C->addCFInput(JJmp);                                                         \
+  /* D*/                                                                       \
+  auto D = NAME.createNode<RegionNode>();                                      \
+  D->addCFInput(CJmp);                                                         \
+  auto DIf = NAME.createNode<IfNode>(                                          \
+      D, NAME.createNode<ConstantNode>(ValueType::Int1, 0));                   \
+  auto DIfTrue = NAME.createNode<IfTrueNode>(DIf);                             \
+  auto DIfFalse = NAME.createNode<IfFalseNode>(DIf);                           \
+  C->addCFInput(DIfTrue);                                                      \
+  /* E*/                                                                       \
+  auto E = NAME.createNode<RegionNode>();                                      \
+  auto EJmp = NAME.createNode<JmpNode>(E);                                     \
+  E->addCFInput(DIfFalse);                                                     \
+  /* F*/                                                                       \
+  auto F = NAME.createNode<RegionNode>();                                      \
+  F->addCFInput(EJmp);                                                         \
+  auto FIf = NAME.createNode<IfNode>(                                          \
+      F, NAME.createNode<ConstantNode>(ValueType::Int1, 0));                   \
+  auto FIfTrue = NAME.createNode<IfTrueNode>(FIf);                             \
+  auto FIfFalse = NAME.createNode<IfFalseNode>(FIf);                           \
+  E->addCFInput(FIfFalse);                                                     \
+  /* G*/                                                                       \
+  auto G = NAME.createNode<RegionNode>();                                      \
+  G->addCFInput(FIfTrue);                                                      \
+  auto GIf = NAME.createNode<IfNode>(                                          \
+      G, NAME.createNode<ConstantNode>(ValueType::Int1, 0));                   \
+  auto GIfTrue = NAME.createNode<IfTrueNode>(GIf);                             \
+  auto GIfFalse = NAME.createNode<IfFalseNode>(GIf);                           \
+  /* H*/                                                                       \
+  auto H = NAME.createNode<RegionNode>();                                      \
+  H->addCFInput(GIfTrue);                                                      \
+  auto HJmp = NAME.createNode<JmpNode>(H);                                     \
+  B->addCFInput(HJmp);                                                         \
+  /* I*/                                                                       \
+  auto I = NAME.createNode<RegionNode>();                                      \
+  I->addCFInput(GIfFalse);                                                     \
+  auto IJmp = NAME.createNode<JmpNode>(I);                                     \
+  K->addCFInput(IJmp);
 
-  auto BIfRhs = F.createNode<ConstantNode>(ValueType::Int32, 66);
-  auto BCond = F.createNode<CmpLENode>(F.getArg(0), BIfRhs);
-
-  // B if
-  auto BIf = F.createNode<IfNode>(A, BCond);
-  auto BIfTrue = F.createNode<IfTrueNode>(BIf);
-  auto BIfFalse = F.createNode<IfFalseNode>(BIf);
-  // C
-  auto CMulTimes = F.createNode<ConstantNode>(ValueType::Int32, 5);
-  auto CRetVal = F.createNode<MulNode>(F.getArg(0), CMulTimes);
-
-  // F cond
-  auto FIfRhs = F.createNode<ConstantNode>(ValueType::Int32, -10);
-  auto FCond = F.createNode<CmpGENode>(F.getArg(0), BIfRhs);
-  // F if
-  auto BFalseRegF = F.createNode<RegionNode>();
-  BFalseRegF->addCFInput(BIfFalse);
-  auto FIf = F.createNode<IfNode>(BFalseRegF, FCond);
-  auto FIfTrue = F.createNode<IfTrueNode>(FIf);
-  auto FIfFalse = F.createNode<IfFalseNode>(FIf);
-
-  // E
-  auto ERhs = F.createNode<ConstantNode>(ValueType::Int32, 5);
-  auto ERetVal = F.createNode<RemNode>(F.getArg(0), ERhs);
-
-  // G
-  auto GRhs = F.createNode<ConstantNode>(ValueType::Int32, 3);
-  auto GRetVal = F.createNode<DivNode>(F.getArg(0), ERhs);
-
-  // final phi for ret value at D node
-  //   range
-  auto DRange = F.createNode<RegionNode>();
-  DRange->addCFInput(BIfTrue);  // C
-  DRange->addCFInput(FIfTrue);  // E
-  DRange->addCFInput(FIfFalse); // G
-  //   phi
-  auto DPhi = F.createNode<PhiNode>(DRange, 3, ValueType::Int32);
-  DPhi->setVal(0, CRetVal);
-  DPhi->setVal(1, ERetVal);
-  DPhi->setVal(2, GRetVal);
-
-  // ret
-  auto ret = F.createNode<RetNode>(DRange, DPhi);
-
-  // final
-  F.getEnd()->addCFInput(ret);
-
-  return fPtr;
-}
+//  +-----------------------+
+//  |                       |
+//  |              +-----+  |
+//  |              |  0  |  |
+//  |              +-----+  |
+//  |                 V     |
+//  |              +-----+  |
+//  |    +---------|  1  |<-+
+//  |    |         +-----+
+//  |    V            V
+//  | +-----+      +-----+
+//  | |  8  |--+   |  2  |<--+
+//  | +-----+  |   +-----+   |
+//  |    V     |      V      |
+//  | +-----+  |   +-----+   |
+//  +-|  7  |  +-->|  3  |   |
+//    +-----+      +-----+   |
+//       V            V      |
+//    +-----+      +-----+   |
+//    |  6  |----->|  4  |---+
+//    +-----+      +-----+
+//       |            V
+//       |         +-----+
+//       +---  --->|  5  |
+//                 +-----+
+// img src: https://github.com/Bryanskiy/MasterCourse.Compilers/tree/master
+#define BUILD_GRAPH_TEST1(NAME)                                                \
+  Function NAME("Hello", FunctionType(ValueType::Void, {ValueType::Int32}));   \
+                                                                               \
+  auto A = NAME.getStart();                                                    \
+  auto AJmp = NAME.createNode<JmpNode>(A);                                     \
+  auto D = NAME.getEnd();                                                      \
+  auto B = NAME.createNode<RegionNode>();                                      \
+  B->addCFInput(AJmp);                                                         \
+                                                                               \
+  /* B if*/                                                                    \
+  auto BIf = NAME.createNode<IfNode>(                                          \
+      B, NAME.createNode<ConstantNode>(ValueType::Int1, 1));                   \
+  auto BIfTrue = NAME.createNode<IfTrueNode>(BIf);                             \
+  auto BIfFalse = NAME.createNode<IfFalseNode>(BIf);                           \
+  /* C*/                                                                       \
+  auto C = NAME.createNode<RegionNode>();                                      \
+  C->addCFInput(BIfTrue);                                                      \
+  auto CJmp = NAME.createNode<JmpNode>(C);                                     \
+  /* F if*/                                                                    \
+  auto F = NAME.createNode<RegionNode>();                                      \
+  F->addCFInput(BIfFalse);                                                     \
+  auto FIf = NAME.createNode<IfNode>(                                          \
+      F, NAME.createNode<ConstantNode>(ValueType::Int1, 1));                   \
+  auto FIfTrue = NAME.createNode<IfTrueNode>(FIf);                             \
+  auto FIfFalse = NAME.createNode<IfFalseNode>(FIf);                           \
+  /* E*/                                                                       \
+  auto E = NAME.createNode<RegionNode>();                                      \
+  E->addCFInput(FIfTrue);                                                      \
+  auto EJmp = NAME.createNode<JmpNode>(E);                                     \
+  /* G*/                                                                       \
+  auto G = NAME.createNode<RegionNode>();                                      \
+  G->addCFInput(FIfFalse);                                                     \
+  auto GJmp = NAME.createNode<JmpNode>(G);                                     \
+                                                                               \
+  D->addCFInput(CJmp);                                                         \
+  D->addCFInput(EJmp);                                                         \
+  D->addCFInput(GJmp);
 
 TEST(Function, FunctionTest0) {
   auto &&fPtr = buildTest0();
@@ -196,11 +333,10 @@ TEST(Function, FunctionTest0) {
 }
 
 TEST(Function, FunctionTest1) {
-  auto &&fPtr = buildTest1();
-  auto &F = *fPtr;
+  BUILD_GRAPH_TEST1(Func);
 
   // verify
-  EXPECT_TRUE(F.verify());
+  EXPECT_TRUE(Func.verify());
 }
 
 TEST(Function, dfs) {
@@ -274,11 +410,51 @@ TEST(Function, idom) {
   // get pointers to idom
   std::vector<Node *> refIDom = {F.getStart(), F.getStart(), A, A, D, A, C};
   std::vector<Node *> obtaindeIDom(idom.size());
-  std::transform(idom.begin(), idom.end(), obtaindeIDom.begin(), [ord = &order](auto id){
-    return ord->at(id);
-  });
+  std::transform(idom.begin(), idom.end(), obtaindeIDom.begin(),
+                 [ord = &order](auto id) { return ord->at(id); });
 
   EXPECT_EQ(obtaindeIDom.size(), refIDom.size());
   EXPECT_EQ(obtaindeIDom, refIDom);
   EXPECT_EQ(semi, idom);
+}
+
+TEST(Function, idom_test1) {
+  BUILD_GRAPH_TEST1(Func);
+
+  auto &&dfsResult = Func.dfs();
+  auto &&semi = Func.semiDominators(dfsResult);
+  auto &&idom = Func.iDominators(dfsResult, semi);
+
+  auto &&[order, dfsParents, dfsNumbers] = dfsResult;
+
+  const std::vector<RegionNodeBase *> orderRef = {A, B, C, Func.getEnd(),
+                                                  F, E, G};
+  EXPECT_EQ(orderRef, order);
+
+  const std::vector<Node *> idomRef{A, A, B, B, B, F, F};
+  std::vector<Node *> obtaindeIDom(idom.size());
+  std::transform(idom.begin(), idom.end(), obtaindeIDom.begin(),
+                 [ord = &order](auto id) { return ord->at(id); });
+  EXPECT_EQ(idomRef, obtaindeIDom);
+}
+
+TEST(Function, idom_test2) {
+  BUILD_GRAPH_TEST2(Func);
+
+  EXPECT_TRUE(Func.verify());
+
+  auto &&dfsResult = Func.dfs();
+  auto &&semi = Func.semiDominators(dfsResult);
+  auto &&idom = Func.iDominators(dfsResult, semi);
+
+  auto &&[order, dfsParents, dfsNumbers] = dfsResult;
+
+  const std::vector<RegionNodeBase *> orderRef = {A, B, C, D, E, F, G, H, I, K, J};
+  EXPECT_EQ(orderRef, order);
+
+  const std::vector<Node *> idomRef{A, A, B, C, D, E, F, G, G, I, B};
+  std::vector<Node *> obtaindeIDom(idom.size());
+  std::transform(idom.begin(), idom.end(), obtaindeIDom.begin(),
+                 [ord = &order](auto id) { return ord->at(id); });
+  EXPECT_EQ(idomRef, obtaindeIDom);
 }
