@@ -88,8 +88,6 @@ protected:
 
 //=------------------------------------------------------------------
 // constant
-// class UnknownNode : public Value {};
-
 class ConstantNode : public Node {
   uint64_t m_val = {};
   friend Function;
@@ -105,10 +103,6 @@ public:
     return node->nodeTy() == NodeType::Constant;
   }
 };
-
-// using CInt8Node = ConstantNode<int8_t, ValueType::Int8>;
-// using CInt32Node = ConstantNode<int32_t, ValueType::Int32>;
-// using CInt64Node = ConstantNode<int64_t, ValueType::Int64>;
 
 //=------------------------------------------------------------------
 // function
