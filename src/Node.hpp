@@ -295,7 +295,11 @@ class RegionNode : public RegionNodeBase {
 public:
   RegionNode() : RegionNodeBase(NodeType::Region) {}
 
-  void addCFInput(CFNode *input) { addOperand(input); }
+  template <typename... Args> void addCFInput(CFNode *input, Args... args) {
+    addOperand(input);
+    addCFInput(args...);
+  }
+  template <> void addCFInput(CFNode *input) { addOperand(input); }
 
   static bool classof(const Node *node) noexcept {
     return node->nodeTy() == NodeType::Region;
@@ -318,8 +322,12 @@ class EndNode : public RegionNodeBase {
 public:
   EndNode() : RegionNodeBase(NodeType::End) {}
 
-  // operand[0...] - input control flows
-  void addCFInput(CFNode *input) { addOperand(input); }
+  template <typename... Args> void addCFInput(CFNode *input, Args... args) {
+    addOperand(input);
+    addCFInput(args...);
+  }
+  template <> void addCFInput(CFNode *input) { addOperand(input); }
+  
   static bool classof(const Node *node) noexcept {
     return node->nodeTy() == NodeType::End;
   }

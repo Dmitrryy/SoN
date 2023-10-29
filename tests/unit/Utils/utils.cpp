@@ -7,17 +7,17 @@ TEST(isa, isa) {
   FunctionType fnTy(ValueType::Void, {});
   Function F("Test_isa", fnTy);
 
-  EXPECT_TRUE(isa<RegionNode>(*F.createNode<RegionNode>()));
-  EXPECT_FALSE(isa<IfNode>(*F.createNode<RegionNode>()));
+  EXPECT_TRUE(isa<RegionNode>(*F.create<RegionNode>()));
+  EXPECT_FALSE(isa<IfNode>(*F.create<RegionNode>()));
 }
 
 TEST(Region, phi) {
   FunctionType fnTy(ValueType::Void, {});
   Function F("Test_isa", fnTy);
 
-  auto r = F.createNode<RegionNode>();
-  auto phi1 = F.createNode<PhiNode>(r, 1, ValueType::Int32);
-  auto phi2 = F.createNode<PhiNode>(r, 1, ValueType::Int32);
+  auto r = F.create<RegionNode>();
+  auto phi1 = F.create<PhiNode>(r, 1, ValueType::Int32);
+  auto phi2 = F.create<PhiNode>(r, 1, ValueType::Int32);
 
   auto &&phis = r->phis();
   EXPECT_EQ(phis.size(), 2);

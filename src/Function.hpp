@@ -38,12 +38,12 @@ private:
     assert(m_args.empty());
     for (auto &&ty : m_fnType.m_argsTypes) {
       assert(ty != ValueType::Void);
-      m_args.emplace_back(createNode<FunctionArgNode>(ty));
+      m_args.emplace_back(create<FunctionArgNode>(ty));
     }
   }
 
 public:
-  template <typename T, typename... Args> T *createNode(Args &&...args) {
+  template <typename T, typename... Args> T *create(Args &&...args) {
     auto &&uptr = std::make_unique<T>(std::forward<Args>(args)...);
     auto ptr = uptr.get();
     m_graph.emplace_back(std::move(uptr));

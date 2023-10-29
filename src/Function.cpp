@@ -28,15 +28,13 @@ struct GraphChecker : public InstVisitor<GraphChecker> {
     }
 
     for (auto &&s : node.operands()) {
-      expected(
-          isa<JmpNode, IfTrueNode, IfFalseNode, RetNode>(s),
-          "[Region] Unexpected Region input: " + getOpcName(s->nodeTy()));
+      expected(isa<JmpNode, IfTrueNode, IfFalseNode, RetNode>(s),
+               "[Region] Unexpected Region input: " + getOpcName(s->nodeTy()));
     }
 
     for (auto &&s : node.users()) {
-      expected(
-          isa<JmpNode, IfNode, PhiNode, RetNode>(s),
-          "[Region] Unexpected Region users " + getOpcName(s->nodeTy()));
+      expected(isa<JmpNode, IfNode, PhiNode, RetNode>(s),
+               "[Region] Unexpected Region users " + getOpcName(s->nodeTy()));
     }
 
     for (auto &&p : node.successors()) {
