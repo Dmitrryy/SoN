@@ -60,11 +60,30 @@ public:
   auto end() { return m_graph.end(); }
 
   //=------------------------------------------------------------------
-  // ALGORITHMS
+  // Verification
   //=------------------------------------------------------------------
   bool verify();
 
-  std::vector<std::pair<Node *, size_t>> dfs() const;
+  //=------------------------------------------------------------------
+  // ALGORITHMS
+  //=------------------------------------------------------------------
+
+  // 0 - \vec[i] has node with dfs number \i
+  // 1 - parents[i] has dfs number of parent of node with dfs number i.
+  // 2 - map Node* to its DFS number
+  // NOTE: parents[0] always equal 0
+  using DFSResultTy =
+      std::tuple<std::vector<RegionNodeBase *>, std::vector<size_t>,
+                 std::unordered_map<RegionNodeBase *, size_t>>;
+  // vec[i] - dfs number of semi-dominatro for node with DFS number `i`
+  using SemiDomResultTy = std::vector<size_t>;
+  // vec[i] - idom DFS number for node with DFS number `i`
+  using IDomResultTy = std::vector<size_t>;
+
+  DFSResultTy dfs() const;
+  SemiDomResultTy semiDominators(const DFSResultTy &dfsResult) const;
+  IDomResultTy iDominators(const DFSResultTy &dfsResult,
+                           const SemiDomResultTy &semi) const;
 };
 
 } // namespace son

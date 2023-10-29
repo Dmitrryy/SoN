@@ -27,6 +27,8 @@ static std::string getOpcName(NodeType opc) {
 #include "Opcodes.def"
 #undef NODE_OPCODE_DEFINE
 #undef NODE_OPCODE_ALL_DEFINE
+  default:
+    return "UNKNOWN";
   }
   return "UNKNOWN";
 }
@@ -39,6 +41,8 @@ constexpr bool isRegionTerminator(NodeType opc) {
 #undef NODE_OPCODE_DEFINE
 #undef NODE_OPCODE_TERMINATORS_DEFINE
     return true;
+  default:
+    return false;
   }
   return false;
 }

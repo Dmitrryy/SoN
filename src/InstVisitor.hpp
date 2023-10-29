@@ -22,7 +22,7 @@ public:
     }
   }
 
-  // Define visitors for functions and basic blocks...
+  // Define visitors for module and functions...
   //
   // TODO: module
   // void visit(Module &M) {
@@ -39,7 +39,7 @@ public:
   void visit(Function *F) { visit(*F); }
   RetTy visit(Node *I) { return visit(*I); }
 
-  // visit - Finally, code to visit an instruction...
+  // visit - Finally, code to visit an node...
   //
   RetTy visit(Node &I) {
     static_assert(std::is_base_of<InstVisitor, SubClass>::value,
@@ -48,7 +48,7 @@ public:
     switch (I.nodeTy()) {
     default:
       assert(0 && "Unknown instruction type encountered!");
-      // Build the switch statement using the Instruction.def file...
+      // Build the switch statement using the Opcodes.def file...
 #define NODE_OPCODE_ALL_DEFINE
 #define NODE_OPCODE_DEFINE(opc_name)                                           \
   case NodeType::opc_name:                                                     \
@@ -60,30 +60,13 @@ public:
     }
   }
 
-  //===--------------------------------------------------------------------===//
-  // Visitation functions... these functions provide default fallbacks in case
-  // the user does not specify what to do for a particular instruction type.
-  // The default behavior is to generalize the instruction type to its subtype
-  // and try visiting the subtype.  All of this should be inlined perfectly,
-  // because there are no virtual functions to get in the way.
-  //
-
-  // When visiting a module, function or basic block directly, these methods get
+  // When visiting a module or function directly, these methods get
   // called to indicate when transitioning into a new unit.
   //
   // TODO: void visitModule(Module &M) {}
   void visitFunction(Function &F) {}
-  void visitBasicBlock(Node &BB) {}
 
-  // Define instruction specific visitor functions that can be overridden to
-  // handle SPECIFIC instructions.  These functions automatically define
-  // visitMul to proxy to visitBinaryOperator for instance in case the user does
-  // not need this generality.
-  //
-  // These functions can also implement fan-out, when a single opcode and
-  // instruction have multiple more specific Instruction subclasses. The Call
-  // instruction currently supports this. We implement that by redirecting that
-  // instruction to a special delegation helper.
+  // visitors for each opcode
 #define NODE_OPCODE_ALL_DEFINE
 #define NODE_OPCODE_DEFINE(OPCODE)                                             \
   RetTy visit##OPCODE(OPCODE##Node &I) {                                       \
@@ -100,28 +83,11 @@ public:
 #undef NODE_OPCODE_DEFINE
 #undef NODE_OPCODE_ALL_DEFINE
 
-  // Specific Instruction type classes... note that all of the casts are
-  // necessary because we use the instruction classes as opaque types...
-  //
-  // RetTy visitICmpInst(CFNode &I) { DELEGATE(CmpInst); }
-
-  // Next level propagators: If the user does not overload a specific
-  // instruction type, they can overload one of these to get the whole class
-  // of instructions...
-  //
+  // Specific Instruction type classes... 
   RetTy visitCastOperation(CastOperationNode &I) {
     DELEGATE(CastOperationNode);
   }
   RetTy visitBinaryOperator(BinOpNode &I) { DELEGATE(BinOpNode); }
-
-  // If the user wants a 'default' case, they can choose to override this
-  // function.  If this function is not overloaded in the user's subclass, then
-  // this instruction just gets ignored.
-  //
-  // Note that you MUST override this function if your return type is not void.
-  //
-  void visitInstruction(Node &I) {} // Ignore unhandled instructions
-
 };
 
 #undef DELEGATE
