@@ -285,39 +285,44 @@ public:
       : Node(nodeType, valType, numOps) {}
 };
 
-class RegionNode : public CFNode {
-  friend Function;
-
+class RegionNodeBase : public CFNode {
 public:
-  RegionNode() : CFNode(NodeType::Region, ValueType::Void, 0) {}
-
-  void addCFInput(CFNode *input) { addOperand(input); }
+  RegionNodeBase(NodeType nTy) : CFNode(nTy, ValueType::Void, 0) {}
 
   std::vector<PhiNode *> phis() const;
   CFNode *terminator() const;
-  auto predicessors() const { return operands(); }
-  std::vector<CFNode *> successors() const;
+  std::vector<RegionNodeBase *> predicessors() const;
+  std::vector<RegionNodeBase *> successors() const;
+};
+
+class RegionNode : public RegionNodeBase {
+  friend Function;
+
+public:
+  RegionNode() : RegionNodeBase(NodeType::Region) {}
+
+  void addCFInput(CFNode *input) { addOperand(input); }
 
   static bool classof(const Node *node) noexcept {
     return node->nodeTy() == NodeType::Region;
   }
 }; // class RegionNode
 
-class StartNode : public CFNode {
+class StartNode : public RegionNodeBase {
   friend Function;
 
 public:
-  StartNode() : CFNode(NodeType::Start, ValueType::Void, 0) {}
+  StartNode() : RegionNodeBase(NodeType::Start) {}
   static bool classof(const Node *node) noexcept {
     return node->nodeTy() == NodeType::Start;
   }
 }; // class StartNode
 
-class EndNode : public CFNode {
+class EndNode : public RegionNodeBase {
   friend Function;
 
 public:
-  EndNode() : CFNode(NodeType::End, ValueType::Void, 0) {}
+  EndNode() : RegionNodeBase(NodeType::End) {}
 
   // operand[0...] - input control flows
   void addCFInput(CFNode *input) { addOperand(input); }
@@ -334,13 +339,14 @@ class IfNode : public CFNode {
 public:
   // operand[0]{CFNode} - input control flow
   // operand[1]{Value} - condition
-  IfNode(CFNode *input, Node *cond) : CFNode(NodeType::If, ValueType::Void, 2) {
+  IfNode(RegionNodeBase *input, Node *cond)
+      : CFNode(NodeType::If, ValueType::Void, 2) {
     setInputCF(input);
     setCondition(cond);
   }
 
-  void setInputCF(CFNode *input) { setOperand(0, input); }
-  auto getInputCF() const { return operand(0); }
+  void setInputCF(RegionNodeBase *input) { setOperand(0, input); }
+  auto getInputCF() const { return dynamic_cast<RegionNodeBase *>(operand(0)); }
   void setCondition(Node *cond) { setOperand(1, cond); }
   auto getCondition() const { return operand(1); }
 
@@ -395,12 +401,16 @@ class RetNode : public CFNode {
   friend Function;
 
 public:
-  RetNode(CFNode *input) : CFNode(NodeType::Ret, ValueType::Void, 1) {}
+  RetNode(CFNode *input) : CFNode(NodeType::Ret, ValueType::Void, 1) {
+    setInputCF(input);
+  }
   RetNode(CFNode *input, Node *val)
       : CFNode(NodeType::Ret, ValueType::Void, 2) {
+    setInputCF(input);
     setRetValue(val);
   }
 
+  void setInputCF(CFNode *node) { setOperand(0, node); }
   void setRetValue(Node *val) { setOperand(1, val); }
   auto getRetValue() { return operand(1); }
   auto retTy() const {
