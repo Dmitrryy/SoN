@@ -357,7 +357,7 @@ TEST(Function, dfs) {
   auto &&fPtr = buildTest0();
   auto &F = *fPtr;
 
-  auto &&[order, dfsParents, dfsNumbers] = F.dfs();
+  auto &&[order, dfsParents, dfsNumbers, rpo] = F.dfs();
   EXPECT_EQ(order.size(), dfsParents.size());
   EXPECT_EQ(order[0], F.getStart());
   EXPECT_EQ(dfsParents[0], 0);
@@ -411,11 +411,11 @@ TEST(Function, idom) {
 
   auto &&dfsResult = F.dfs();
   auto &&semi = F.semiDominators(dfsResult);
-  auto &&idom = F.iDominators(dfsResult, semi);
+  auto &&idom = F.iDominators(semi);
 
   std::vector<RegionNodeBase *> refOrder = {F.getStart(), A, B, D,
                                             F.getEnd(),   C, FR};
-  auto &&[order, dfsParents, dfsNumbers] = dfsResult;
+  auto &&[order, dfsParents, dfsNumbers, rpo] = dfsResult;
   EXPECT_EQ(order.size(), refOrder.size());
   EXPECT_EQ(order, refOrder);
 
@@ -436,9 +436,9 @@ TEST(Function, idom_test1) {
 
   auto &&dfsResult = Func.dfs();
   auto &&semi = Func.semiDominators(dfsResult);
-  auto &&idom = Func.iDominators(dfsResult, semi);
+  auto &&idom = Func.iDominators(semi);
 
-  auto &&[order, dfsParents, dfsNumbers] = dfsResult;
+  auto &&[order, dfsParents, dfsNumbers, rpo] = dfsResult;
 
   const std::vector<RegionNodeBase *> orderRef = {A, B, C, Func.getEnd(),
                                                   F, E, G};
@@ -449,6 +449,10 @@ TEST(Function, idom_test1) {
   std::transform(idom.begin(), idom.end(), obtaindeIDom.begin(),
                  [ord = &order](auto id) { return ord->at(id); });
   EXPECT_EQ(idomRef, obtaindeIDom);
+
+  // rpo check
+  const std::vector<RegionNodeBase *> rpoRef = {D, C, E, G, F, B, A};
+  EXPECT_EQ(rpoRef, rpo);
 }
 
 TEST(Function, idom_test2) {
@@ -458,9 +462,9 @@ TEST(Function, idom_test2) {
 
   auto &&dfsResult = Func.dfs();
   auto &&semi = Func.semiDominators(dfsResult);
-  auto &&idom = Func.iDominators(dfsResult, semi);
+  auto &&idom = Func.iDominators(semi);
 
-  auto &&[order, dfsParents, dfsNumbers] = dfsResult;
+  auto &&[order, dfsParents, dfsNumbers, rpo] = dfsResult;
 
   const std::vector<RegionNodeBase *> orderRef = {A, B, C, D, E, F,
                                                   G, H, I, K, J};
@@ -471,6 +475,11 @@ TEST(Function, idom_test2) {
   std::transform(idom.begin(), idom.end(), obtaindeIDom.begin(),
                  [ord = &order](auto id) { return ord->at(id); });
   EXPECT_EQ(idomRef, obtaindeIDom);
+
+  // rpo check
+  const std::vector<RegionNodeBase *> rpoRef = {H, K, I, G, F, E,
+                                                D, C, J, B, A};
+  EXPECT_EQ(rpoRef, rpo);
 }
 
 TEST(Function, idom_test3) {
@@ -480,9 +489,9 @@ TEST(Function, idom_test3) {
 
   auto &&dfsResult = Func.dfs();
   auto &&semi = Func.semiDominators(dfsResult);
-  auto &&idom = Func.iDominators(dfsResult, semi);
+  auto &&idom = Func.iDominators(semi);
 
-  auto &&[order, dfsParents, dfsNumbers] = dfsResult;
+  auto &&[order, dfsParents, dfsNumbers, rpo] = dfsResult;
 
   const std::vector<RegionNodeBase *> orderRef = {A, B, C, D, G, I, E, F, H};
   EXPECT_EQ(orderRef, order);
@@ -492,4 +501,8 @@ TEST(Function, idom_test3) {
   std::transform(idom.begin(), idom.end(), obtaindeIDom.begin(),
                  [ord = &order](auto id) { return ord->at(id); });
   EXPECT_EQ(idomRef, obtaindeIDom);
+
+  // rpo check
+  const std::vector<RegionNodeBase *> rpoRef = {I, G, D, C, H, F, E, B, A};
+  EXPECT_EQ(rpoRef, rpo);
 }

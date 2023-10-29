@@ -110,12 +110,11 @@ bool Function::verify() {
   return checker.isValid;
 }
 
-Function::DFSResultTy Function::dfs() const {
-  std::vector<RegionNodeBase *> order;
-  // index in 'order'
-  std::vector<size_t> parents;
-  std::unordered_map<RegionNodeBase *, size_t> visited;
-
+void Function::_dfs(RegionNodeBase *veertex,
+                    std::unordered_map<RegionNodeBase *, size_t> &visited,
+                    std::vector<size_t> &parents,
+                    std::vector<RegionNodeBase *> &dfs,
+                    std::vector<RegionNodeBase *> &rpo) const {
   // first - dfs number of parent
   // second - todo node
   std::vector<std::pair<size_t, RegionNodeBase *>> workList = {
@@ -123,24 +122,34 @@ Function::DFSResultTy Function::dfs() const {
 
   while (!workList.empty()) {
     auto &&curWork = workList.back();
-    auto *V = curWork.second;
-    workList.pop_back();
+    auto *const V = curWork.second;
     if (visited.count(V)) {
+      workList.pop_back();
+      rpo.push_back(V);
       continue;
     }
 
-    const auto idx = order.size();
-    order.push_back(V);
+    const auto idx = dfs.size();
+    dfs.push_back(V);
     parents.push_back(curWork.first);
     visited.emplace(V, idx);
 
     // insert successors
     for (auto &&s : V->successors()) {
-      workList.emplace_back(idx, s);
+      if (!visited.count(s))
+        workList.emplace_back(idx, s);
     }
   }
+}
 
-  return {order, parents, visited};
+Function::DFSResultTy Function::dfs() const {
+  std::vector<RegionNodeBase *> order;
+  std::vector<size_t> parents;
+  std::unordered_map<RegionNodeBase *, size_t> visited;
+  std::vector<RegionNodeBase *> rpo;
+  _dfs(getStart(), visited, parents, order, rpo);
+
+  return {order, parents, visited, rpo};
 }
 
 // The compress function recursively traverses the ancestors of a vertex to
@@ -204,7 +213,7 @@ semi-dominator.
 */
 Function::SemiDomResultTy
 Function::semiDominators(const DFSResultTy &dfsResult) const {
-  auto &&[vertex, dfsParents, dfsNumber] = dfsResult;
+  auto &&[vertex, dfsParents, dfsNumber, rpo] = dfsResult;
   const auto N = vertex.size();
   // initialization
   std::vector<size_t> semi(N);
@@ -275,9 +284,7 @@ At the end of this process, the `idom[]` array contains the immediate dominators
 for each node in the CFG.
 */
 Function::IDomResultTy
-Function::iDominators(const DFSResultTy &dfsResult,
-                      const SemiDomResultTy &semi) const {
-  auto &&[vertex, dfsParents, dfsNumber] = dfsResult;
+Function::iDominators(const SemiDomResultTy &semi) const {
   const auto N = semi.size();
   std::vector<size_t> idom(N, 0);
   std::unordered_map<size_t, std::vector<size_t>> bucket;

@@ -50,8 +50,8 @@ public:
     return ptr;
   }
 
-  StartNode *getStart() { return m_start.get(); }
-  EndNode *getEnd() { return m_end.get(); }
+  StartNode *getStart() const { return m_start.get(); }
+  EndNode *getEnd() const { return m_end.get(); }
 
   auto getArg(size_t id) { return m_args.at(id); }
   auto getNumArgs() const { return m_args.size(); }
@@ -71,10 +71,12 @@ public:
   // 0 - \vec[i] has node with dfs number \i
   // 1 - parents[i] has dfs number of parent of node with dfs number i.
   // 2 - map Node* to its DFS number
+  // 3 - rpo order
   // NOTE: parents[0] always equal 0
   using DFSResultTy =
       std::tuple<std::vector<RegionNodeBase *>, std::vector<size_t>,
-                 std::unordered_map<RegionNodeBase *, size_t>>;
+                 std::unordered_map<RegionNodeBase *, size_t>,
+                 std::vector<RegionNodeBase *>>;
   // vec[i] - dfs number of semi-dominatro for node with DFS number `i`
   using SemiDomResultTy = std::vector<size_t>;
   // vec[i] - idom DFS number for node with DFS number `i`
@@ -82,8 +84,13 @@ public:
 
   DFSResultTy dfs() const;
   SemiDomResultTy semiDominators(const DFSResultTy &dfsResult) const;
-  IDomResultTy iDominators(const DFSResultTy &dfsResult,
-                           const SemiDomResultTy &semi) const;
+  IDomResultTy iDominators(const SemiDomResultTy &semi) const;
+
+protected:
+  void _dfs(RegionNodeBase *veertex,
+            std::unordered_map<RegionNodeBase *, size_t> &visited,
+            std::vector<size_t> &parents, std::vector<RegionNodeBase *> &dfs,
+            std::vector<RegionNodeBase *> &rpo) const;
 };
 
 } // namespace son
