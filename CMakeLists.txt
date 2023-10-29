@@ -14,10 +14,5 @@ include(cmake/comp_flags.cmake)
 
 add_subdirectory(src)
 
-add_executable(main main.cpp)
-target_include_directories(main PRIVATE src)
-target_link_libraries(main PRIVATE ${LIBLIST})
-
-
 enable_testing()
 add_subdirectory(tests)
