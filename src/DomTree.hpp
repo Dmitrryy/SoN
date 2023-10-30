@@ -21,16 +21,20 @@ public:
     std::tie(m_idxToNode, std::ignore, m_nodeToIdx, std::ignore) = dfsResult;
   }
 
-  bool dominates(RegionNodeBase *A, RegionNodeBase *B) {
+  bool dominates(RegionNodeBase *A, RegionNodeBase *B) const {
     const auto aIdx = m_nodeToIdx.at(A);
     const auto bIdx = m_nodeToIdx.at(B);
     return dominates(aIdx, bIdx);
   }
 
+  RegionNodeBase *idom(RegionNodeBase *A) const {
+    return m_idxToNode[m_idomTree[m_nodeToIdx.at(A)]];
+  }
+
 private:
-  bool dominates(size_t aIdx, size_t bIdx) {
+  bool dominates(size_t aIdx, size_t bIdx) const {
     // go up to root
-    while(bIdx != 0 && bIdx != aIdx) {
+    while (bIdx != 0 && bIdx != aIdx) {
       bIdx = m_idomTree[bIdx];
     }
     return aIdx == bIdx;
