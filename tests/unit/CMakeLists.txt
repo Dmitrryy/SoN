@@ -35,6 +35,7 @@ foreach(TEST ${TESTLIST})
 
   target_compile_features(${TEST} PRIVATE cxx_std_20)
   target_include_directories(${TEST} PRIVATE ${CMAKE_SOURCE_DIR}/src)
+  target_include_directories(${TEST} PRIVATE ${CMAKE_SOURCE_DIR}/tests/assets)
 
   add_test(NAME ${TEST} COMMAND ${TEST} --gtest_color=yes)
   set_property(TEST ${TEST} PROPERTY LABELS unit)
