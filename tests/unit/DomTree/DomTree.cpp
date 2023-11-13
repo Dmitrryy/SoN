@@ -2,7 +2,7 @@
 
 #include "graphs.hpp"
 
-#include <DomTree.hpp>
+#include <Analyses/DomTree.hpp>
 
 using namespace son;
 

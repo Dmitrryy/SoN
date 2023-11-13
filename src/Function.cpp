@@ -110,6 +110,46 @@ bool Function::verify() {
   return checker.isValid;
 }
 
+//=------------------------------------------------------------------
+// Sea of nodes specific functions
+//=------------------------------------------------------------------
+// reverse RPO with data nodes
+std::vector<Node *> Function::linearilize() const {
+  std::vector<Node *> result;
+  result.reserve(m_graph.size());
+
+  std::unordered_set<Node *> visited;
+  std::vector<Node *> workList = {m_end.get()};
+
+  while (!workList.empty()) {
+    auto * const V = workList.back();
+    if (visited.count(V)) {
+      workList.pop_back();
+      result.push_back(V);
+      continue;
+    }
+    visited.emplace(V);
+
+    // insert all users (operands)
+    // firstly ControlFlow, then data
+    for (auto &&s : V->operands()) {
+      assert(s);
+      if (!visited.count(s) && dynamic_cast<CFNode *>(s))
+        workList.emplace_back(s);
+    }
+    for (auto &&s : V->operands()) {
+      assert(s);
+      if (!visited.count(s) && !dynamic_cast<CFNode *>(s))
+        workList.emplace_back(s);
+    }
+  }
+
+  return result;
+}
+
+//=------------------------------------------------------------------
+// ALGORITHMS
+//=------------------------------------------------------------------
 void Function::_dfs(RegionNodeBase *veertex,
                     std::unordered_map<RegionNodeBase *, size_t> &visited,
                     std::vector<size_t> &parents,

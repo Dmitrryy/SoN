@@ -22,9 +22,7 @@ public:
   }
 
   bool dominates(RegionNodeBase *A, RegionNodeBase *B) const {
-    const auto aIdx = m_nodeToIdx.at(A);
-    const auto bIdx = m_nodeToIdx.at(B);
-    return dominates(aIdx, bIdx);
+    return dominates(m_nodeToIdx.at(A), m_nodeToIdx.at(B));
   }
 
   RegionNodeBase *idom(RegionNodeBase *A) const {

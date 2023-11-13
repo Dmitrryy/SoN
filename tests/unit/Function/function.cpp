@@ -278,3 +278,10 @@ TEST(Function, idom_test3) {
   const std::vector<RegionNodeBase *> rpoRef = {I, G, D, C, H, F, E, B, A};
   EXPECT_EQ(rpoRef, rpo);
 }
+
+TEST(Function, line_test1) {
+  BUILD_GRAPH_TEST1(Func);
+  EXPECT_TRUE(Func.verify());
+
+  auto &&line = Func.linearilize();
+}

@@ -56,7 +56,9 @@ protected:
     m_operands.push_back(operand);
 
     // register the usage of operand
-    operand->m_users.emplace(this);
+    if (operand != nullptr) {
+      operand->m_users.emplace(this);
+    }
     return idx;
   }
   void setOperand(size_t idx, Node *operand) {
@@ -327,7 +329,7 @@ public:
     addCFInput(args...);
   }
   template <> void addCFInput(CFNode *input) { addOperand(input); }
-  
+
   static bool classof(const Node *node) noexcept {
     return node->nodeTy() == NodeType::End;
   }
