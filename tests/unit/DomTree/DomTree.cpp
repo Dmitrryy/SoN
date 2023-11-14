@@ -50,6 +50,14 @@ TEST(DomTree, example2) {
     EXPECT_TRUE(DT.dominates(node, node));
     EXPECT_TRUE(DT.dominates(A, node));
   }
+  EXPECT_TRUE(DT.dominates(B, J));
+  EXPECT_TRUE(DT.dominates(B, C));
+  EXPECT_TRUE(DT.dominates(G, I));
+  EXPECT_TRUE(DT.dominates(F, G));
+  EXPECT_TRUE(DT.dominates(D, H));
+
+  EXPECT_FALSE(DT.dominates(J, C));
+  EXPECT_FALSE(DT.dominates(F, E));
 }
 
 TEST(DomTree, example3) {

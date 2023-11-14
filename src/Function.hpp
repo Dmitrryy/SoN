@@ -8,6 +8,8 @@
 
 namespace son {
 
+class DomTree;
+
 struct FunctionType final {
   ValueType m_retType = ValueType::Void;
   std::vector<ValueType> m_argsTypes;
@@ -60,11 +62,6 @@ public:
   auto end() { return m_graph.end(); }
 
   //=------------------------------------------------------------------
-  // Sea of nodes specific functions
-  //=------------------------------------------------------------------
-  std::vector<Node *> linearilize() const;
-
-  //=------------------------------------------------------------------
   // Verification
   //=------------------------------------------------------------------
   bool verify();
@@ -90,6 +87,21 @@ public:
   DFSResultTy dfs() const;
   SemiDomResultTy semiDominators(const DFSResultTy &dfsResult) const;
   IDomResultTy iDominators(const SemiDomResultTy &semi) const;
+
+  //=------------------------------------------------------------------
+  // Sea of nodes specific functions
+  //=------------------------------------------------------------------
+  using DataMapperTy =
+      std::unordered_map<RegionNodeBase *, std::vector<Node *>>;
+  DataMapperTy dataSchedule(const DomTree &DT) const;
+  std::vector<RegionNodeBase *> linearize(const DomTree &DT,
+                                          const DFSResultTy &dfs) const;
+
+  //=------------------------------------------------------------------
+  // Debug functions
+  //=------------------------------------------------------------------
+  void dump(std::ostream &stream) const;
+  std::unordered_map<const Node *, std::string> nameNodes() const;
 
 protected:
   void _dfs(RegionNodeBase *veertex,

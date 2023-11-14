@@ -1,9 +1,12 @@
 #include "Function.hpp"
+#include "Analyses/DomTree.hpp"
 #include "InstVisitor.hpp"
 
 #include <algorithm>
+#include <deque>
 #include <iostream>
 #include <numeric>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -113,44 +116,103 @@ bool Function::verify() {
 //=------------------------------------------------------------------
 // Sea of nodes specific functions
 //=------------------------------------------------------------------
-// reverse RPO with data nodes
-std::vector<Node *> Function::linearilize() const {
-  std::vector<Node *> result;
-  result.reserve(m_graph.size());
+static std::pair<bool, std::vector<RegionNodeBase *>>
+getUserRegions(Node *node,
+               const std::unordered_map<Node *, RegionNodeBase *> &NMap) {
+  if (dynamic_cast<CFNode *>(node)) {
+    return {true, {}};
+  }
 
-  std::unordered_set<Node *> visited;
-  std::vector<Node *> workList = {m_end.get()};
+  bool isComplete = true;
+  std::vector<RegionNodeBase *> res;
+  for (auto *const U : node->users()) {
+    if (isa<RetNode>(U)) {
+      res.push_back(dynamic_cast<RetNode *>(U)->getInputCF());
+    } else if (isa<IfNode>(U)) {
+      res.push_back(dynamic_cast<IfNode *>(U)->getInputCF());
+    } else if (isa<PhiNode>(U)) {
+      // find all proper inputs
+      const auto *Phi = dynamic_cast<PhiNode *>(U);
+      const auto numVals = Phi->numVals();
+      for (size_t i = 0; i < numVals; ++i) {
+        const auto *Val = Phi->getVal(i);
+        if (Val == node) {
+          res.push_back(Phi->getInputReg(i));
+        }
+      }
+    } else {
+      if (NMap.count(U)) {
+        res.push_back(NMap.at(U));
+      } else {
+        isComplete = false;
+      }
+    }
+  }
 
-  while (!workList.empty()) {
-    auto * const V = workList.back();
-    if (visited.count(V)) {
-      workList.pop_back();
-      result.push_back(V);
-      continue;
-    }
-    visited.emplace(V);
+  return {isComplete, res};
+}
 
-    // insert all users (operands)
-    // firstly ControlFlow, then data
-    for (auto &&s : V->operands()) {
-      assert(s);
-      if (!visited.count(s) && dynamic_cast<CFNode *>(s))
-        workList.emplace_back(s);
+Function::DataMapperTy Function::dataSchedule(const DomTree &DT) const {
+  DataMapperTy result;
+  std::unordered_map<Node *, RegionNodeBase *> mapped;
+
+  // immediately map phi nodes
+  for (auto &&pV : m_graph) {
+    auto *const V = pV.get();
+    if (isa<PhiNode>(V)) {
+      auto Phi = dynamic_cast<PhiNode *>(V);
+      mapped[Phi] = Phi->getInput();
     }
-    for (auto &&s : V->operands()) {
-      assert(s);
-      if (!visited.count(s) && !dynamic_cast<CFNode *>(s))
-        workList.emplace_back(s);
+  }
+
+  // iterate while there is an incomplete node
+  bool wasMapped = true;
+  while (wasMapped) {
+    wasMapped = false;
+    for (auto &&pV : m_graph) {
+      auto *const V = pV.get();
+      if (mapped.count(V)) {
+        continue;
+      }
+
+      auto &&[complete, userRegions] = getUserRegions(V, mapped);
+      if (complete && !userRegions.empty()) {
+        wasMapped = true;
+
+        // find region that dominates all user regions
+        auto *ResReg = userRegions.front();
+        while (std::any_of(
+            userRegions.begin(), userRegions.end(),
+            [&](auto *node) { return !DT.dominates(ResReg, node); })) {
+          ResReg = DT.idom(ResReg);
+        }
+
+        mapped[V] = ResReg;
+        result[ResReg].push_back(V);
+      }
     }
+  }
+
+  // reverse results
+  for (auto &&It : result) {
+    std::reverse(It.second.begin(), It.second.end());
   }
 
   return result;
 }
 
+// FIXME: we should handle loops (it is not just RPO)
+std::vector<RegionNodeBase *>
+Function::linearize(const DomTree &DT, const DFSResultTy &dfs) const {
+  auto [order, dfsParents, dfsNumbers, rpo] = dfs;
+  std::reverse(rpo.begin(), rpo.end());
+  return rpo;
+}
+
 //=------------------------------------------------------------------
 // ALGORITHMS
 //=------------------------------------------------------------------
-void Function::_dfs(RegionNodeBase *veertex,
+void Function::_dfs(RegionNodeBase *vertex,
                     std::unordered_map<RegionNodeBase *, size_t> &visited,
                     std::vector<size_t> &parents,
                     std::vector<RegionNodeBase *> &dfs,
@@ -290,6 +352,8 @@ Function::semiDominators(const DFSResultTy &dfsResult) const {
 /*
 Lengauer-Tarjan Algorithm
 
+https://www.cs.princeton.edu/courses/archive/fall03/cs528/handouts/a%20fast%20algorithm%20for%20finding.pdf
+
 1. **Initialization**:
     - Create an array (or equivalent data structure) called `idom[]` that will
       hold the immediate dominator of each node. Initially, all entries are set
@@ -361,4 +425,51 @@ Function::iDominators(const SemiDomResultTy &semi) const {
   return idom;
 }
 
+//=------------------------------------------------------------------
+// Debug functions
+//=------------------------------------------------------------------
+void Function::dump(std::ostream &stream) const {
+  DomTree DT(*this);
+  auto &&DataMap = dataSchedule(DT);
+  auto &&dfsResult = dfs();
+  auto &&linRegs = linearize(DT, dfsResult);
+
+  // get names
+  auto &&names = nameNodes();
+
+  for (auto *Reg : linRegs) {
+    stream << names.at(Reg) << ":\n";
+    // phis
+    for (auto *Phi : Reg->phis()) {
+      Phi->dump(stream, names);
+      stream << '\n';
+    }
+    // data nodes
+    for (auto *node : DataMap[Reg]) {
+      node->dump(stream, names);
+      stream << '\n';
+    }
+    // terminator
+    if (auto *Term = Reg->terminator()) {
+      Term->dump(stream, names);
+      stream << '\n';
+    }
+    stream << '\n';
+  }
+}
+
+std::unordered_map<const Node *, std::string> Function::nameNodes() const {
+  size_t N = m_graph.size();
+  std::unordered_map<const Node *, std::string> res;
+  for (size_t idx = 0; idx < N; ++idx) {
+    auto *node = m_graph.at(idx).get();
+    res[node] = "%" + std::to_string(idx);
+  }
+
+  // start and end
+  res[getStart()] = "entry";
+  res[getEnd()] = "exit";
+
+  return res;
+}
 } // namespace son

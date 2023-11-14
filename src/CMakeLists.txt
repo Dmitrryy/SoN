@@ -9,6 +9,9 @@ Function.cpp
 )
 
 
+target_include_directories(sonIR PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
+
 set(LIBLIST
     sonIR
     PARENT_SCOPE)

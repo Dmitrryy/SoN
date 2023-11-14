@@ -26,7 +26,7 @@ class Node {
   std::vector<Node *> m_operands;
   // Outputs
   // We should rapidly remove and add users, but order is not important.
-  std::unordered_set<Node *> m_users;
+  std::unordered_multiset<Node *> m_users;
 
   ValueType m_valType = ValueType::Void;
   NodeType m_nodeType = NodeType::Unknown;
@@ -50,6 +50,23 @@ public:
   auto usersCount() const noexcept { return m_users.size(); }
   const auto &users() const noexcept { return m_users; }
 
+  //=------------------------------------------------------------------
+  // Debug functions
+  //=------------------------------------------------------------------
+  virtual void
+  dump(std::ostream &stream,
+       const std::unordered_map<const Node *, std::string> &names) const {
+    if (valueTy() != ValueType::Void) {
+      stream << names.at(this) << " = " << getTyName(valueTy());
+    }
+    stream << getOpcName(nodeTy());
+    for (int i = 0; i < opCount(); ++i) {
+      auto opr = operand(i);
+      stream << ((i == 0) ? " " : ", ");
+      stream << getTyName(opr->valueTy()) << ' ' << names.at(opr);
+    }
+  }
+
 protected:
   auto addOperand(Node *operand) {
     auto idx = m_operands.size();
@@ -65,7 +82,7 @@ protected:
     // remove usage of previous operand
     auto &&opPlace = m_operands.at(idx);
     if (opPlace != nullptr) {
-      opPlace->m_users.erase(this);
+      opPlace->m_users.erase(m_users.find(this));
     }
     // sometimes we want remain operand empty for a while
     if (operand != nullptr) {
@@ -78,7 +95,7 @@ protected:
   Node *removeOperand(size_t idx) {
     auto *operand = m_operands.at(idx);
     if (operand != nullptr) {
-      operand->m_users.erase(this);
+      operand->m_users.erase(m_users.find(this));
     }
 
     m_operands.erase(m_operands.begin() + idx);
@@ -103,6 +120,13 @@ public:
 
   static bool classof(const Node *node) noexcept {
     return node->nodeTy() == NodeType::Constant;
+  }
+
+  void dump(std::ostream &stream,
+            const std::unordered_map<const Node *, std::string> &names)
+      const override {
+    stream << names.at(this) << " = " << getTyName(valueTy()) << ' '
+           << std::to_string(m_val);
   }
 };
 
@@ -415,6 +439,7 @@ public:
   }
 
   void setInputCF(CFNode *node) { setOperand(0, node); }
+  auto getInputCF() const { return dynamic_cast<RegionNodeBase *>(operand(0)); }
   void setRetValue(Node *val) { setOperand(1, val); }
   auto getRetValue() { return operand(1); }
   auto retTy() const {
@@ -442,6 +467,9 @@ public:
   void setInput(RegionNode *val) { setOperand(0, val); }
   RegionNode *getInput() const {
     return dynamic_cast<RegionNode *>(operand(0));
+  }
+  RegionNodeBase *getInputReg(size_t idx) const {
+    return getInput()->predicessors().at(idx);
   }
 
   static bool classof(const Node *node) noexcept {

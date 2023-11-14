@@ -2,6 +2,7 @@
 
 #include "graphs.hpp"
 
+#include <Analyses/DomTree.hpp>
 #include <Function.hpp>
 #include <memory>
 using namespace son;
@@ -279,9 +280,20 @@ TEST(Function, idom_test3) {
   EXPECT_EQ(rpoRef, rpo);
 }
 
-TEST(Function, line_test1) {
+TEST(Function, data_schedule_test1) {
   BUILD_GRAPH_TEST1(Func);
   EXPECT_TRUE(Func.verify());
 
-  auto &&line = Func.linearilize();
+  DomTree DT(Func);
+  auto &&NMap = Func.dataSchedule(DT);
+  auto &&dfsResult = Func.dfs();
+  auto &&[order, dfsParents, dfsNumbers, rpo] = dfsResult;
+  EXPECT_TRUE(Func.verify());
+}
+
+TEST(Function, dump_test1) {
+  BUILD_GRAPH_TEST1(Func);
+  EXPECT_TRUE(Func.verify());
+
+  Func.dump(std::cout);
 }

@@ -33,6 +33,26 @@ static std::string getOpcName(NodeType opc) {
   return "UNKNOWN";
 }
 
+static std::string getTyName(ValueType type) {
+  switch(type) {
+    case ValueType::Void:
+      return "void";
+    case ValueType::Int1:
+      return "i1";
+    case ValueType::Int8:
+      return "i8";
+    case ValueType::Int32:
+      return "i32";
+    case ValueType::Int64:
+      return "i64";
+    case ValueType::Ptr:
+      return "ptr";
+    default:
+      return "UNKNOWN";
+  }
+  return "UNKNOWN";
+}
+
 constexpr bool isRegionTerminator(NodeType opc) {
   switch (opc) {
 #define NODE_OPCODE_TERMINATORS_DEFINE
