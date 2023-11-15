@@ -240,4 +240,179 @@ namespace son {
                                       {D, "D"}, {E, "E"}, {F, "F"},            \
                                       {G, "G"}, {H, "H"}, {I, "I"}};
 
+//
+//  +------------------+
+//  |                  |
+//  |  +-----+      +-----+
+//  |  |  A  |      |  D  |
+//  |  +-----+      +-----+
+//  |     |            ^
+//  |     V            |
+//  |  +-----+      +-----+
+//  +->|  B  |----->|  C  |
+//     +-----+      +-----+
+//        |
+//        |
+//        V
+//     +-----+
+//     |  E  |
+//     +-----+
+//
+#define BUILD_GRAPH_TEST4(NAME)                                                \
+  Function NAME("Hello", FunctionType(ValueType::Void,                         \
+                                      {ValueType::Int1, ValueType::Int1}));    \
+                                                                               \
+  auto A = NAME.getStart();                                                    \
+  auto AJmp = NAME.create<JmpNode>(A);                                         \
+  auto E = NAME.getEnd();                                                      \
+  auto B = NAME.create<RegionNode>();                                          \
+  B->addCFInput(AJmp);                                                         \
+                                                                               \
+  /* B if*/                                                                    \
+  auto BIf = NAME.create<IfNode>(B, NAME.getArg(0));                           \
+  auto BIfTrue = NAME.create<IfTrueNode>(BIf);                                 \
+  auto BIfFalse = NAME.create<IfFalseNode>(BIf);                               \
+  /* C*/                                                                       \
+  auto C = NAME.create<RegionNode>();                                          \
+  C->addCFInput(BIfTrue);                                                      \
+  auto CJmp = NAME.create<JmpNode>(C);                                         \
+  /* D */                                                                      \
+  auto D = NAME.create<RegionNode>();                                          \
+  D->addCFInput(CJmp);                                                         \
+  auto DJmp = NAME.create<JmpNode>(D);                                         \
+  B->addCFInput(DJmp);                                                         \
+  /* E */                                                                      \
+  E->addCFInput(BIfFalse);                                                     \
+  Function::NamesMapTy NAME##Names = {                                         \
+      {A, "A"}, {B, "B"}, {C, "C"}, {D, "D"}, {E, "E"}};
+
+//                 +-----+
+//                 |  A  |
+//                 +-----+
+//                    |
+//                    V
+//                 +-----+
+//       +-------->|  B  |--------+
+//       |         +-----+        |
+//       |                        |
+//       |                        V
+//     +-----+     +-----+     +-----+
+//     |  C  |<----|  E  |<----|  F  |
+//     +-----+     +-----+     +-----+
+//                    |           |
+//                    V           |
+//                 +-----+        |
+//                 |  D  |<-------+
+//                 +-----+
+//
+#define BUILD_GRAPH_TEST5(NAME)                                                \
+  Function NAME("Hello", FunctionType(ValueType::Void,                         \
+                                      {ValueType::Int1, ValueType::Int1}));    \
+                                                                               \
+  auto A = NAME.getStart();                                                    \
+  auto AJmp = NAME.create<JmpNode>(A);                                         \
+  auto D = NAME.getEnd();                                                      \
+  auto B = NAME.create<RegionNode>();                                          \
+  B->addCFInput(AJmp);                                                         \
+  auto BJmp = NAME.create<JmpNode>(B);                                         \
+                                                                               \
+  /* F if */                                                                   \
+  auto F = NAME.create<RegionNode>();                                          \
+  F->addCFInput(BJmp);                                                         \
+  auto FIf = NAME.create<IfNode>(F, NAME.getArg(0));                           \
+  auto FIfTrue = NAME.create<IfTrueNode>(FIf);                                 \
+  auto FIfFalse = NAME.create<IfFalseNode>(FIf);                               \
+  /* E if */                                                                   \
+  auto E = NAME.create<RegionNode>();                                          \
+  E->addCFInput(FIfFalse);                                                     \
+  auto EIf = NAME.create<IfNode>(E, NAME.getArg(1));                           \
+  auto EIfTrue = NAME.create<IfTrueNode>(EIf);                                 \
+  auto EIfFalse = NAME.create<IfFalseNode>(EIf);                               \
+  /* C */                                                                      \
+  auto C = NAME.create<RegionNode>();                                          \
+  C->addCFInput(EIfTrue);                                                      \
+  auto CJmp = NAME.create<JmpNode>(C);                                         \
+  B->addCFInput(CJmp);                                                         \
+                                                                               \
+  D->addCFInput(EIfFalse, FIfTrue);                                            \
+  Function::NamesMapTy NAME##Names = {{A, "A"}, {B, "B"}, {C, "C"},            \
+                                      {D, "D"}, {E, "E"}, {F, "F"}};
+
+//                 +-----+
+//                 |Entry|
+//                 +-----+
+//                    V
+//                 +-----+
+//    +----------->|  A  |
+//    |            +-----+
+//    |               V
+//    |            +-----+          +-----+
+//    |      +---->|  B  |--------->|  J  |
+//    |      |     +-----+          +-----+
+//    |      |        V                |
+//    |      |     +-----+    +-----+  |
+//    |      |     |  C  |--->|EX(G)|  |
+//    |      |     +-----+    +-----+  |
+//    |      |        V                |
+//    |      |     +-----+             |
+//    |      |     |  D  |<------------+
+//    |      |     +-----+
+//    |      |        V
+//    |      |     +-----+
+//    |      +-----|  E  |
+//    |            +-----+
+//    |               V
+//    |            +-----+
+//    +------------|  F  |
+//                 +-----+
+//
+#define BUILD_GRAPH_TEST6(NAME)                                                \
+  Function NAME("Hello", FunctionType(ValueType::Void,                         \
+                                      {ValueType::Int1, ValueType::Int1,       \
+                                       ValueType::Int1, ValueType::Int1}));    \
+                                                                               \
+  auto Entry = NAME.getStart();                                                \
+  auto EntryJmp = NAME.create<JmpNode>(Entry);                                 \
+  auto G = NAME.getEnd();                                                      \
+  auto A = NAME.create<RegionNode>();                                          \
+  A->addCFInput(EntryJmp);                                                     \
+  auto AJmp = NAME.create<JmpNode>(A);                                         \
+                                                                               \
+  /* B if */                                                                   \
+  auto B = NAME.create<RegionNode>();                                          \
+  B->addCFInput(AJmp);                                                         \
+  auto BIf = NAME.create<IfNode>(B, NAME.getArg(0));                           \
+  auto BIfTrue = NAME.create<IfTrueNode>(BIf);                                 \
+  auto BIfFalse = NAME.create<IfFalseNode>(BIf);                               \
+  /* C if */                                                                   \
+  auto C = NAME.create<RegionNode>();                                          \
+  C->addCFInput(BIfFalse);                                                     \
+  auto CIf = NAME.create<IfNode>(C, NAME.getArg(1));                           \
+  auto CIfTrue = NAME.create<IfTrueNode>(CIf);                                 \
+  auto CIfFalse = NAME.create<IfFalseNode>(CIf);                               \
+  G->addCFInput(CIfFalse);                                                     \
+  /* J */                                                                      \
+  auto J = NAME.create<RegionNode>();                                          \
+  J->addCFInput(BIfTrue);                                                      \
+  auto JJmp = NAME.create<JmpNode>(J);                                         \
+  /* D */                                                                      \
+  auto D = NAME.create<RegionNode>();                                          \
+  D->addCFInput(CIfTrue, JJmp);                                                \
+  auto DJmp = NAME.create<JmpNode>(D);                                         \
+  /* E if */                                                                   \
+  auto E = NAME.create<RegionNode>();                                          \
+  E->addCFInput(DJmp);                                                         \
+  auto EIf = NAME.create<IfNode>(E, NAME.getArg(2));                           \
+  auto EIfTrue = NAME.create<IfTrueNode>(EIf);                                 \
+  auto EIfFalse = NAME.create<IfFalseNode>(EIf);                               \
+  B->addCFInput(EIfTrue);                                                      \
+  /* F */                                                                      \
+  auto F = NAME.create<RegionNode>();                                          \
+  F->addCFInput(EIfFalse);                                                     \
+  auto FJmp = NAME.create<JmpNode>(F);                                         \
+  A->addCFInput(FJmp);                                                         \
+                                                                               \
+  Function::NamesMapTy NAME##Names = {{A, "A"}, {B, "B"}, {C, "C"}, {D, "D"},  \
+                                      {E, "E"}, {F, "F"}, {G, "G"}, {J, "J"}};
+
 } // namespace son

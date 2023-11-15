@@ -134,9 +134,20 @@ public:
 // function
 class FunctionArgNode : public Node {
   friend Function;
+  size_t m_idx = 0;
 
 public:
-  FunctionArgNode(ValueType type) : Node(NodeType::FunctionArg, type) {}
+  FunctionArgNode(ValueType type, size_t idx)
+      : Node(NodeType::FunctionArg, type), m_idx(idx) {}
+
+  auto getIdx() const { return m_idx; }
+
+  void dump(std::ostream &stream,
+            const std::unordered_map<const Node *, std::string> &names)
+      const override {
+    stream << names.at(this) << " = " << getTyName(valueTy()) << ' ';
+    stream << getOpcName(nodeTy()) << "(" << std::to_string(m_idx) << ")";
+  }
 
   static bool classof(const Node *node) noexcept {
     return node->nodeTy() == NodeType::FunctionArg;

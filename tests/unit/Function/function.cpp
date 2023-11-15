@@ -321,3 +321,27 @@ TEST(Function, dump_test3) {
   Func.nameNodes(FuncNames);
   Func.dump(std::cout, FuncNames);
 }
+
+TEST(Function, dump_test4) {
+  BUILD_GRAPH_TEST4(Func);
+  EXPECT_TRUE(Func.verify());
+
+  Func.nameNodes(FuncNames);
+  Func.dump(std::cout, FuncNames);
+}
+
+TEST(Function, dump_test5) {
+  BUILD_GRAPH_TEST5(Func);
+  EXPECT_TRUE(Func.verify());
+
+  Func.nameNodes(FuncNames);
+  Func.dump(std::cout, FuncNames);
+}
+
+TEST(Function, dump_test6) {
+  BUILD_GRAPH_TEST6(Func);
+  EXPECT_TRUE(Func.verify());
+
+  Func.nameNodes(FuncNames);
+  Func.dump(std::cout, FuncNames);
+}

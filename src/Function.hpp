@@ -40,7 +40,7 @@ private:
     assert(m_args.empty());
     for (auto &&ty : m_fnType.m_argsTypes) {
       assert(ty != ValueType::Void);
-      m_args.emplace_back(create<FunctionArgNode>(ty));
+      m_args.emplace_back(create<FunctionArgNode>(ty, m_args.size()));
     }
   }
 
