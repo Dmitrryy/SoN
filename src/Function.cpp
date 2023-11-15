@@ -24,7 +24,7 @@ struct GraphChecker : public InstVisitor<GraphChecker> {
   }
 
   void visitRegionNode(RegionNode &node) {
-    for (auto &&p : node.predicessors()) {
+    for (auto &&p : node.predecessors()) {
       expected(isa<RegionNode, StartNode>(p),
                "[Region] Unexpected Region predicessor: " +
                    getOpcName(p->nodeTy()));
@@ -93,7 +93,7 @@ struct GraphChecker : public InstVisitor<GraphChecker> {
     expected(isa<RegionNode>(inputCF),
              "[Phi] Expected region as input CF node");
 
-    expected(node.numVals() == inputCF->predicessors().size(),
+    expected(node.numVals() == inputCF->predecessors().size(),
              "[Phi] Number region predecessors differs number input values");
 
     // verify types
@@ -330,7 +330,7 @@ Function::semiDominators(const DFSResultTy &dfsResult) const {
   for (auto vDFS = N - 1; vDFS > 0; --vDFS) {
     auto *V = vertex[vDFS];
     // TODO: verify that all operand of CFNode is CFNode
-    for (auto &&U : V->predicessors()) {
+    for (auto &&U : V->predecessors()) {
       auto uDFS = dfsNumber.at(U);
       if (uDFS < vDFS) {
         semi[vDFS] = std::min(semi[vDFS], semi[uDFS]);
@@ -435,6 +435,16 @@ void Function::dump(std::ostream &stream, const NamesMapTy &names) const {
   auto &&linRegs = linearize(DT, dfsResult);
 
   for (auto *Reg : linRegs) {
+    auto &&preds = Reg->predecessors();
+    if (!preds.empty()) {
+      stream << "// predecessors:";
+      bool isFirst = true;
+      for (auto &&P : preds) {
+        stream << (isFirst ? " " : ", ") << names.at(P);
+        isFirst = false;
+      }
+      stream << '\n';
+    }
     stream << names.at(Reg) << ":\n";
     // phis
     for (auto *Phi : Reg->phis()) {

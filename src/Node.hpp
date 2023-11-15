@@ -311,7 +311,7 @@ public:
 
   std::vector<PhiNode *> phis() const;
   CFNode *terminator() const;
-  std::vector<RegionNodeBase *> predicessors() const;
+  std::vector<RegionNodeBase *> predecessors() const;
   std::vector<RegionNodeBase *> successors() const;
 };
 
@@ -514,7 +514,7 @@ public:
     return dynamic_cast<RegionNode *>(operand(0));
   }
   RegionNodeBase *getInputReg(size_t idx) const {
-    return getInput()->predicessors().at(idx);
+    return getInput()->predecessors().at(idx);
   }
 
   static bool classof(const Node *node) noexcept {

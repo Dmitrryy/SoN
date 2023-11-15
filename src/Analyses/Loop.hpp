@@ -59,7 +59,7 @@ public:
 
     for (const auto &V : rpo) {
       std::vector<RegionNodeBase *> latches;
-      for (const auto &P : V->predicessors()) {
+      for (const auto &P : V->predecessors()) {
         if (DT.dominates(V, P)) {
           latches.push_back(P);
         }
@@ -95,7 +95,7 @@ public:
         }
 
         // insert predicessors
-        for (auto &&p : V->predicessors()) {
+        for (auto &&p : V->predecessors()) {
           if (!visited.count(p) && p != H)
             workStack.emplace_back(p);
         }

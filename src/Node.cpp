@@ -38,7 +38,7 @@ std::vector<RegionNodeBase *> RegionNodeBase::successors() const {
   return result;
 }
 
-std::vector<RegionNodeBase *> RegionNodeBase::predicessors() const {
+std::vector<RegionNodeBase *> RegionNodeBase::predecessors() const {
   std::vector<RegionNodeBase *> result;
 
   for (auto &&operand : operands()) {
