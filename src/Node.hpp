@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Arena.hpp"
 #include "Opcodes.hpp"
 
 #include <algorithm>

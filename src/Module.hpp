@@ -9,7 +9,7 @@ namespace son {
 
 class Module final {
   std::string m_name = "Unknown module";
-
+  // TODO
 };
 
 } // namespace son
