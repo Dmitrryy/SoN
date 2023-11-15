@@ -434,35 +434,51 @@ void Function::dump(std::ostream &stream, const NamesMapTy &names) const {
   auto &&dfsResult = dfs();
   auto &&linRegs = linearize(DT, dfsResult);
 
+  // dump function prototype
+  stream << "func " << m_name << "(";
+  for (size_t i = 0; i < m_args.size(); ++i) {
+    auto &&Arg = m_args.at(i);
+    stream << (i == 0 ? "" : ", ") << getTyName(Arg->valueTy()) << ' '
+           << names.at(Arg);
+  }
+  stream << ") {\n";
+
+  // dump function body
   for (auto *Reg : linRegs) {
+    stream << names.at(Reg) << ":";
     auto &&preds = Reg->predecessors();
     if (!preds.empty()) {
-      stream << "// predecessors:";
+      stream << " /* Pred:";
       bool isFirst = true;
       for (auto &&P : preds) {
         stream << (isFirst ? " " : ", ") << names.at(P);
         isFirst = false;
       }
-      stream << '\n';
+      stream << " */";
     }
-    stream << names.at(Reg) << ":\n";
+    stream << '\n';
+
     // phis
     for (auto *Phi : Reg->phis()) {
+      stream << "  ";
       Phi->dump(stream, names);
       stream << '\n';
     }
     // data nodes
     for (auto *node : DataMap[Reg]) {
+      stream << "  ";
       node->dump(stream, names);
       stream << '\n';
     }
     // terminator
     if (auto *Term = Reg->terminator()) {
+      stream << "  ";
       Term->dump(stream, names);
       stream << '\n';
     }
     stream << '\n';
   }
+  stream << "}\n";
 }
 
 void Function::nameNodes(Function::NamesMapTy &names) const {
