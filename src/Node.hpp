@@ -57,7 +57,7 @@ public:
   dump(std::ostream &stream,
        const std::unordered_map<const Node *, std::string> &names) const {
     if (valueTy() != ValueType::Void) {
-      stream << names.at(this) << " = " << getTyName(valueTy());
+      stream << names.at(this) << " = " << getTyName(valueTy()) << ' ';
     }
     stream << getOpcName(nodeTy());
     for (int i = 0; i < opCount(); ++i) {
@@ -361,6 +361,9 @@ public:
 
 //=------------------------------------------------------------------
 // control: If, Jmp, Ret
+class IfTrueNode;
+class IfFalseNode;
+
 class IfNode : public CFNode {
   friend Function;
 
@@ -377,6 +380,39 @@ public:
   auto getInputCF() const { return dynamic_cast<RegionNodeBase *>(operand(0)); }
   void setCondition(Node *cond) { setOperand(1, cond); }
   auto getCondition() const { return operand(1); }
+
+  RegionNodeBase *getTrueExit() const {
+    for (auto &&U : users()) {
+      if (isa<IfTrueNode>(U)) {
+        auto *res = dynamic_cast<RegionNodeBase *>(*U->users().begin());
+        assert(res);
+        return res;
+      }
+    }
+    return nullptr;
+  }
+  RegionNodeBase *getFalseExit() const {
+    for (auto &&U : users()) {
+      if (isa<IfFalseNode>(U)) {
+        auto *res = dynamic_cast<RegionNodeBase *>(*U->users().begin());
+        assert(res);
+        return res;
+      }
+    }
+    return nullptr;
+  }
+
+  void dump(std::ostream &stream,
+            const std::unordered_map<const Node *, std::string> &names)
+      const override {
+    stream << getOpcName(nodeTy());
+
+    auto *TN = getTrueExit();
+    auto *FN = getFalseExit();
+    stream << ' ' << getTyName(getCondition()->valueTy()) << ' '
+           << names.at(getCondition()) << ", T:" << names.at(TN)
+           << ", F:" << names.at(FN);
+  }
 
   static bool classof(const Node *node) noexcept {
     return node->nodeTy() == NodeType::If;
@@ -420,6 +456,15 @@ public:
   JmpNode(CFNode *input) : CFNode(NodeType::Jmp, ValueType::Void, 1) {
     setOperand(0, input);
   }
+
+  void dump(std::ostream &stream,
+            const std::unordered_map<const Node *, std::string> &names)
+      const override {
+    stream << getOpcName(nodeTy());
+
+    stream << ' ' << names.at(*users().begin());
+  }
+
   static bool classof(const Node *node) noexcept {
     return node->nodeTy() == NodeType::Jmp;
   }

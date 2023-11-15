@@ -100,8 +100,14 @@ public:
   //=------------------------------------------------------------------
   // Debug functions
   //=------------------------------------------------------------------
-  void dump(std::ostream &stream) const;
-  std::unordered_map<const Node *, std::string> nameNodes() const;
+  using NamesMapTy = std::unordered_map<const Node *, std::string>;
+  void dump(std::ostream &stream, const NamesMapTy &names) const;
+  void dump(std::ostream &stream) const {
+    NamesMapTy names;
+    nameNodes(names);
+    dump(stream, names);
+  }
+  void nameNodes(NamesMapTy &names) const;
 
 protected:
   void _dfs(RegionNodeBase *veertex,

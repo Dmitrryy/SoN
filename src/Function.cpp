@@ -428,14 +428,11 @@ Function::iDominators(const SemiDomResultTy &semi) const {
 //=------------------------------------------------------------------
 // Debug functions
 //=------------------------------------------------------------------
-void Function::dump(std::ostream &stream) const {
+void Function::dump(std::ostream &stream, const NamesMapTy &names) const {
   DomTree DT(*this);
   auto &&DataMap = dataSchedule(DT);
   auto &&dfsResult = dfs();
   auto &&linRegs = linearize(DT, dfsResult);
-
-  // get names
-  auto &&names = nameNodes();
 
   for (auto *Reg : linRegs) {
     stream << names.at(Reg) << ":\n";
@@ -458,18 +455,17 @@ void Function::dump(std::ostream &stream) const {
   }
 }
 
-std::unordered_map<const Node *, std::string> Function::nameNodes() const {
+void Function::nameNodes(Function::NamesMapTy &names) const {
   size_t N = m_graph.size();
-  std::unordered_map<const Node *, std::string> res;
   for (size_t idx = 0; idx < N; ++idx) {
     auto *node = m_graph.at(idx).get();
-    res[node] = "%" + std::to_string(idx);
+    if (names.count(node) == 0) {
+      names[node] = "%" + std::to_string(idx);
+    }
   }
 
   // start and end
-  res[getStart()] = "entry";
-  res[getEnd()] = "exit";
-
-  return res;
+  names[getStart()] = "entry";
+  names[getEnd()] = "exit";
 }
 } // namespace son

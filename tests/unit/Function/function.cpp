@@ -291,9 +291,33 @@ TEST(Function, data_schedule_test1) {
   EXPECT_TRUE(Func.verify());
 }
 
+TEST(Function, dump_test0) {
+  auto &&fPtr = buildTest0();
+  auto &F = *fPtr;
+
+  F.dump(std::cout);
+}
+
 TEST(Function, dump_test1) {
   BUILD_GRAPH_TEST1(Func);
   EXPECT_TRUE(Func.verify());
 
-  Func.dump(std::cout);
+  Func.nameNodes(FuncNames);
+  Func.dump(std::cout, FuncNames);
+}
+
+TEST(Function, dump_test2) {
+  BUILD_GRAPH_TEST2(Func);
+  EXPECT_TRUE(Func.verify());
+
+  Func.nameNodes(FuncNames);
+  Func.dump(std::cout, FuncNames);
+}
+
+TEST(Function, dump_test3) {
+  BUILD_GRAPH_TEST3(Func);
+  EXPECT_TRUE(Func.verify());
+
+  Func.nameNodes(FuncNames);
+  Func.dump(std::cout, FuncNames);
 }

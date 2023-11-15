@@ -55,7 +55,9 @@ namespace son {
   G->addCFInput(FIfFalse);                                                     \
   auto GJmp = NAME.create<JmpNode>(G);                                         \
                                                                                \
-  D->addCFInput(CJmp, EJmp, GJmp);
+  D->addCFInput(CJmp, EJmp, GJmp);                                             \
+  Function::NamesMapTy NAME##Names = {{A, "A"}, {B, "B"}, {C, "C"}, {D, "D"},  \
+                                      {E, "E"}, {F, "F"}, {G, "G"}};
 
 //                 +-----+
 //                 |  A  |
@@ -149,7 +151,10 @@ namespace son {
   auto I = NAME.create<RegionNode>();                                          \
   I->addCFInput(GIfFalse);                                                     \
   auto IJmp = NAME.create<JmpNode>(I);                                         \
-  K->addCFInput(IJmp);
+  K->addCFInput(IJmp);                                                         \
+  Function::NamesMapTy NAME##Names = {{A, "A"}, {B, "B"}, {C, "C"}, {D, "D"},  \
+                                      {E, "E"}, {F, "F"}, {G, "G"}, {J, "J"},  \
+                                      {H, "H"}, {K, "K"}, {I, "I"}};
 
 //  +-----------------------+
 //  |                       |
@@ -230,5 +235,9 @@ namespace son {
   auto GIfFalse = NAME.create<IfFalseNode>(GIf);                               \
   C->addCFInput(GIfFalse);                                                     \
                                                                                \
-  I->addCFInput(HIfTrue, GIfTrue);
+  I->addCFInput(HIfTrue, GIfTrue);                                             \
+  Function::NamesMapTy NAME##Names = {{A, "A"}, {B, "B"}, {C, "C"},            \
+                                      {D, "D"}, {E, "E"}, {F, "F"},            \
+                                      {G, "G"}, {H, "H"}, {I, "I"}};
+
 } // namespace son
