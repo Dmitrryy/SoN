@@ -1,5 +1,20 @@
 # SoN - sea of nodes IR
 
+The project represents realization JIT and AOT compiler based on sea of nodes intermediate representation and is created with learning purposes.
+
+## Terminology
+
+**Loop** - LLVM definition.
+
+## Project structure
+
+* Node.hpp / Node.cpp - definition of sea of nodes intermediate representation.
+* Function.cpp / Function.hpp - graph structure, that manages nodes memory and provides basic algorithms: DFS, RPO, dominator tree building (Lengauer-Tarjan), graph linearization. Besides a graph validation is implemented based on the instruction visitor.
+* InstVisitor.hpp - visit every node in the graph with calling of customized handlers.
+* DomTree.hpp - provide interface for checking of domination. The implementation is based on immediate dominators tree.
+* Loop.hpp - LoopInfo structure, that provide information about loops (including nested loops). As loop we consider LLVM loop.
+
+
 ## References
 
 ### Sea of nodes
