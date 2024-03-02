@@ -1,5 +1,6 @@
 #include "Function.hpp"
 #include "Analyses/DomTree.hpp"
+#include "Analyses/Loop.hpp"
 #include "InstVisitor.hpp"
 
 #include <algorithm>
@@ -202,11 +203,35 @@ Function::DataMapperTy Function::dataSchedule(const DomTree &DT) const {
 }
 
 // FIXME: we should handle loops (it is not just RPO)
-std::vector<RegionNodeBase *>
-Function::linearize(const DomTree &DT, const DFSResultTy &dfs) const {
+std::vector<RegionNodeBase *> Function::linearize(const DomTree &DT,
+                                                  const DFSResultTy &dfs,
+                                                  LoopInfo &LI) const {
   auto [order, dfsParents, dfsNumbers, rpo] = dfs;
   std::reverse(rpo.begin(), rpo.end());
-  return rpo;
+
+  // group by loops
+  std::vector<RegionNodeBase *> result;
+  std::unordered_set<RegionNodeBase *> visited;
+  result.reserve(rpo.size());
+  for (auto R: rpo) {
+    if (visited.count(R)) {
+      continue;
+    }
+
+    auto *L = LI.getLoopFor(R);
+    if (!L) {
+      result.push_back(R);
+      visited.emplace(R);
+      continue;
+    }
+
+    for (auto LR : L->blocks()) {
+      result.push_back(LR);
+      visited.emplace(LR);
+    }
+  }
+
+  return result;
 }
 
 //=------------------------------------------------------------------
@@ -432,7 +457,8 @@ void Function::dump(std::ostream &stream, const NamesMapTy &names) const {
   DomTree DT(*this);
   auto &&DataMap = dataSchedule(DT);
   auto &&dfsResult = dfs();
-  auto &&linRegs = linearize(DT, dfsResult);
+  auto &&LI = LoopInfo::loopAnalyze(*this, dfsResult, DT);
+  auto &&linRegs = linearize(DT, dfsResult, LI);
 
   // dump function prototype
   stream << "func " << getTyName(m_fnType.m_retType) << " " << m_name << "(";

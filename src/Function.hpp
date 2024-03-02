@@ -9,6 +9,7 @@
 namespace son {
 
 class DomTree;
+class LoopInfo;
 
 struct FunctionType final {
   ValueType m_retType = ValueType::Void;
@@ -94,8 +95,8 @@ public:
   using DataMapperTy =
       std::unordered_map<RegionNodeBase *, std::vector<Node *>>;
   DataMapperTy dataSchedule(const DomTree &DT) const;
-  std::vector<RegionNodeBase *> linearize(const DomTree &DT,
-                                          const DFSResultTy &dfs) const;
+  std::vector<RegionNodeBase *>
+  linearize(const DomTree &DT, const DFSResultTy &dfs, LoopInfo &LI) const;
 
   //=------------------------------------------------------------------
   // Debug functions
