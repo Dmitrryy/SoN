@@ -117,6 +117,7 @@ public:
   auto liveNumber(Node *node) const { return m_liveNumbers.at(node); }
   auto liveInterval(Node *node) const { return m_intervals.at(node); }
   auto &liveIn(RegionNodeBase *region) const & { return m_liveIn.at(region); }
+  const LiveNumbers &getLiveNumbers() const & { return m_liveNumbers; }
 
 private:
   LiveNumbers _liveNumbers(const std::vector<RegionNodeBase *> &linOrder,
