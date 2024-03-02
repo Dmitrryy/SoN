@@ -1,15 +1,15 @@
-# cpmaddpackage(
-#   NAME
-#   googletest
-#   GITHUB_REPOSITORY
-#   google/googletest
-#   GIT_TAG
-#   release-1.12.1
-#   VERSION
-#   1.12.1
-#   OPTIONS
-#   "INSTALL_GTEST OFF")
-find_package(GTest REQUIRED)
+cpmaddpackage(
+  NAME
+  googletest
+  GITHUB_REPOSITORY
+  google/googletest
+  GIT_TAG
+  release-1.12.1
+  VERSION
+  1.12.1
+  OPTIONS
+  "INSTALL_GTEST OFF")
+# find_package(GTest REQUIRED)
 
 list_dirs(UNIT_DIRS ${CMAKE_CURRENT_SOURCE_DIR})
 

@@ -42,7 +42,7 @@ if(NOT COMMAND cpm_message)
   endfunction()
 endif()
 
-set(CURRENT_CPM_VERSION 1.0.0-development-version)
+set(CURRENT_CPM_VERSION 0.38.7)
 
 get_filename_component(CPM_CURRENT_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}" REALPATH)
 if(CPM_DIRECTORY)
@@ -98,6 +98,12 @@ macro(cpm_set_policies)
   if(POLICY CMP0135)
     cmake_policy(SET CMP0135 NEW)
     set(CMAKE_POLICY_DEFAULT_CMP0135 NEW)
+  endif()
+
+  # treat relative git repository paths as being relative to the parent project's remote
+  if(POLICY CMP0150)
+    cmake_policy(SET CMP0150 NEW)
+    set(CMAKE_POLICY_DEFAULT_CMP0150 NEW)
   endif()
 endmacro()
 cpm_set_policies()
