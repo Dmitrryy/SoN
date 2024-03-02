@@ -99,6 +99,13 @@ public:
   linearize(const DomTree &DT, const DFSResultTy &dfs, LoopInfo &LI) const;
 
   //=------------------------------------------------------------------
+  // Liveness
+  //=------------------------------------------------------------------
+  using LiveNumbers = std::unordered_map<Node *, size_t>;
+  LiveNumbers liveNumbers(const std::vector<RegionNodeBase *> &linOrder,
+                          const DataMapperTy &rangeToInstrs) const;
+
+  //=------------------------------------------------------------------
   // Debug functions
   //=------------------------------------------------------------------
   using NamesMapTy = std::unordered_map<const Node *, std::string>;

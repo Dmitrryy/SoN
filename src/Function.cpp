@@ -2,6 +2,7 @@
 #include "Analyses/DomTree.hpp"
 #include "Analyses/Loop.hpp"
 #include "InstVisitor.hpp"
+#include "Node.hpp"
 
 #include <algorithm>
 #include <deque>
@@ -213,7 +214,7 @@ std::vector<RegionNodeBase *> Function::linearize(const DomTree &DT,
   std::vector<RegionNodeBase *> result;
   std::unordered_set<RegionNodeBase *> visited;
   result.reserve(rpo.size());
-  for (auto R: rpo) {
+  for (auto R : rpo) {
     if (visited.count(R)) {
       continue;
     }
@@ -232,6 +233,36 @@ std::vector<RegionNodeBase *> Function::linearize(const DomTree &DT,
   }
 
   return result;
+}
+
+//=------------------------------------------------------------------
+// Liveness
+//=------------------------------------------------------------------
+Function::LiveNumbers
+Function::liveNumbers(const std::vector<RegionNodeBase *> &linOrder,
+                      const DataMapperTy &rangeToInstrs) const {
+  Function::LiveNumbers res;
+
+  size_t curLiveNum = 0;
+  for (auto R : linOrder) {
+    if (!rangeToInstrs.contains(R)) {
+      continue;
+    }
+
+    // phi
+    for (auto Phi: R->phis()) {
+      res[Phi] = curLiveNum;
+    }
+
+    for (auto I : rangeToInstrs.at(R)) {
+      curLiveNum += 2;
+      res[I] = curLiveNum;
+    }
+
+    curLiveNum += 2;
+  }
+
+  return res;
 }
 
 //=------------------------------------------------------------------
