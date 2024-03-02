@@ -519,6 +519,16 @@ public:
   auto numVals() const noexcept { return opCount() - 1; }
   void setVal(size_t id, Node *val) { setOperand(id + 1, val); }
   Node *getVal(size_t id) const { return operand(id + 1); }
+  Node *getValOf(RegionNodeBase *region) { 
+    auto &&preds = getInput()->predecessors();
+    for (size_t idx = 0; idx < preds.size(); ++idx) {
+      if (region == preds[idx]) {
+        return getVal(idx);
+      }
+    }
+    assert(0);
+    return nullptr;
+  }
   void setInput(RegionNode *val) { setOperand(0, val); }
   RegionNode *getInput() const {
     return dynamic_cast<RegionNode *>(operand(0));
