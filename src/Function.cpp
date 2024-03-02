@@ -236,36 +236,6 @@ std::vector<RegionNodeBase *> Function::linearize(const DomTree &DT,
 }
 
 //=------------------------------------------------------------------
-// Liveness
-//=------------------------------------------------------------------
-Function::LiveNumbers
-Function::liveNumbers(const std::vector<RegionNodeBase *> &linOrder,
-                      const DataMapperTy &rangeToInstrs) const {
-  Function::LiveNumbers res;
-
-  size_t curLiveNum = 0;
-  for (auto R : linOrder) {
-    if (!rangeToInstrs.contains(R)) {
-      continue;
-    }
-
-    // phi
-    for (auto Phi: R->phis()) {
-      res[Phi] = curLiveNum;
-    }
-
-    for (auto I : rangeToInstrs.at(R)) {
-      curLiveNum += 2;
-      res[I] = curLiveNum;
-    }
-
-    curLiveNum += 2;
-  }
-
-  return res;
-}
-
-//=------------------------------------------------------------------
 // ALGORITHMS
 //=------------------------------------------------------------------
 void Function::_dfs(RegionNodeBase *vertex,

@@ -4,6 +4,7 @@
 #include "graphs.hpp"
 
 #include <Analyses/DomTree.hpp>
+#include <Analyses/Liveness.hpp>
 #include <Analyses/Loop.hpp>
 #include <Function.hpp>
 #include <iostream>
@@ -69,18 +70,14 @@ TEST(Liveness, test_lecture) {
       {V1, "V1"}, {V2, "V2"}, {V3_N1Phi0, "V3"}, {V4_N1Phi1, "V4"},
       {V5, "V5"}, {V7, "V7"}, {V8, "V8"},        {V9, "V9"}};
   F.nameNodes(Names);
-  F.dump(std::cout, Names);  
+  F.dump(std::cout, Names);
 
   // live numbers
-  DomTree DT(F);
-  auto &&DataMap = F.dataSchedule(DT);
-  auto &&dfsResult = F.dfs();
-  auto &&LI = LoopInfo::loopAnalyze(F, dfsResult, DT);
-  auto &&linRegs = F.linearize(DT, dfsResult, LI);
-  auto &&liveNums = F.liveNumbers(linRegs, DataMap);
+  Liveness LV(F);
 
-  for (auto &&p: liveNums) {
-    p.first->dump(std::cout, Names);
-    std::cout << ", live: " << p.second << std::endl;
+  for (auto &&n :
+       std::vector<Node *>{V0, V1, V2, V3_N1Phi0, V4_N1Phi1, V5, V7, V8, V9}) {
+    n->dump(std::cout, Names);
+    std::cout << ", live: " << LV.liveNumber(n) << std::endl;
   }
 }
