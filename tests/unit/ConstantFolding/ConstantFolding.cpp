@@ -1,6 +1,6 @@
 #include "gtest/gtest.h"
 
-#include "Analyses/ConstantFolding.hpp"
+#include "Optimizations/ConstantFolding.hpp"
 #include "Node.hpp"
 
 #include <iostream>
