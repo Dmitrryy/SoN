@@ -66,6 +66,18 @@ public:
     }
   }
 
+  void setOperand(size_t idx, Node *operand) {
+    // remove usage of previous operand
+    auto &&opPlace = m_operands.at(idx);
+    if (opPlace != nullptr) {
+      opPlace->m_users.erase(opPlace->m_users.find(this));
+    }
+    // sometimes we want remain operand empty for a while
+    if (operand != nullptr) {
+      operand->m_users.emplace(this);
+    }
+    opPlace = operand;
+  }
 protected:
   auto addOperand(Node *operand) {
     auto idx = m_operands.size();
@@ -76,18 +88,6 @@ protected:
       operand->m_users.emplace(this);
     }
     return idx;
-  }
-  void setOperand(size_t idx, Node *operand) {
-    // remove usage of previous operand
-    auto &&opPlace = m_operands.at(idx);
-    if (opPlace != nullptr) {
-      opPlace->m_users.erase(m_users.find(this));
-    }
-    // sometimes we want remain operand empty for a while
-    if (operand != nullptr) {
-      operand->m_users.emplace(this);
-    }
-    opPlace = operand;
   }
 
   // NOTE: expensive operation.

@@ -1,0 +1,1 @@
+son_add_utest(ConstantFolding.cpp)
