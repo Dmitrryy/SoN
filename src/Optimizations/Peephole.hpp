@@ -15,6 +15,8 @@ class Peephole {
 public:
   // Add + Shl + Xor
   void run(Function &F) {
+    _canonicalize(F);
+
     auto &&workStack = _initialWorkList(F);
 
     while (!workStack.empty()) {
@@ -22,7 +24,7 @@ public:
       workStack.pop_back();
 
       if (isa<AddNode>(node)) {
-        _tryAdd(static_cast<AddNode *>(node));
+        _tryAdd(F, static_cast<AddNode *>(node));
       } else if (isa<ShlNode>(node)) {
         _tryShl(static_cast<ShlNode *>(node));
       } else if (isa<XorNode>(node)) {
@@ -32,6 +34,18 @@ public:
   }
 
 private:
+  void _canonicalize(Function &F) {
+    for (auto &&n : F) {
+      auto *node = n.get();
+      // set constant to rhs
+      if (isa<AddNode, XorNode>(node) && node->usersCount() > 0 &&
+          isa<ConstantNode>(node->operand(0)) &&
+          !isa<ConstantNode>(node->operand(1))) {
+        node->swapOperands(0, 1);
+      }
+    }
+  }
+
   std::vector<Node *> _initialWorkList(Function &F) {
     std::vector<Node *> res;
 
@@ -44,11 +58,12 @@ private:
     return res;
   }
 
-  bool _tryAdd(AddNode *node) {
+  bool _tryAdd(Function &F, AddNode *node) {
     if (node->usersCount() == 0) {
       return false;
     }
 
+    // Try 1:
     // add chain: combining constants
     //
     // V1 = add V2, Const1
@@ -57,56 +72,40 @@ private:
     // V1 = add Const1, Const2
     // V2 = add V2, V1
     // NOTE: check that there is not V1 users except next add
-
-    std::vector<Node *> addChain;
-    addChain.reserve(4);
-
-    AddNode *nextAdd = nullptr;
-    ConstantNode *curConst = nullptr;
-    size_t curConstIdx = 0;
     if (isa<AddNode>(node->operand(0)) && isa<ConstantNode>(node->operand(1))) {
-      nextAdd = static_cast<AddNode *>(node->operand(0));
-      curConst = static_cast<ConstantNode *>(node->operand(1));
-      curConstIdx = 1;
-    } else if (isa<AddNode>(node->operand(1)) &&
-               isa<ConstantNode>(node->operand(0))) {
-      nextAdd = static_cast<AddNode *>(node->operand(1));
-      curConst = static_cast<ConstantNode *>(node->operand(0));
-      curConstIdx = 0;
+      auto *nextAdd = static_cast<AddNode *>(node->operand(0));
+      auto *curConst = static_cast<ConstantNode *>(node->operand(1));
+
+      // check users
+      if (nextAdd->usersCount() > 1) {
+        return false;
+      }
+
+      if (!isa<ConstantNode>(nextAdd->operand(0)) &&
+          isa<ConstantNode>(nextAdd->operand(1))) {
+        auto *nonConst = nextAdd->operand(0);
+
+        // reorder
+        nextAdd->setOperand(0, curConst);
+        node->setOperand(1, nonConst);
+        return true;
+      }
     }
 
-    if (!nextAdd) {
-      return false;
+    // Try 2:
+    // add V1, V1
+    // ->
+    // shl V1, 1
+    if (node->operand(0) == node->operand(1)) {
+      auto *c1 = F.create<ConstantNode>(node->valueTy(), 1);
+      auto *shl = F.create<ShlNode>(node->operand(0), c1);
+
+      node->replaceWith(shl);
+      node->detach();
+      return true;
     }
 
-    Node *nonConst = nullptr;
-    size_t nonConstIdx = 0;
-    ConstantNode *nextConst = nullptr;
-    if (!isa<ConstantNode>(nextAdd->operand(0)) &&
-        isa<ConstantNode>(nextAdd->operand(1))) {
-      nonConst = nextAdd->operand(0);
-      nonConstIdx = 0;
-      nextConst = static_cast<ConstantNode *>(nextAdd->operand(1));
-    } else if (!isa<ConstantNode>(nextAdd->operand(1)) &&
-               isa<ConstantNode>(nextAdd->operand(0))) {
-      nonConst = nextAdd->operand(1);
-      nonConstIdx = 1;
-      nextConst = static_cast<ConstantNode *>(nextAdd->operand(0));
-    }
-
-    if (!nonConst) {
-      return false;
-    }
-
-    // check users
-    if (nextAdd->usersCount() > 1) {
-      return false;
-    }
-
-    // reorder
-    nextAdd->setOperand(nonConstIdx, curConst);
-    node->setOperand(curConstIdx, nonConst);
-    return true;
+    return false;
   }
 
   bool _tryShl(ShlNode *node) {

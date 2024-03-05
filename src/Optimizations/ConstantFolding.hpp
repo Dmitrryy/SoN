@@ -80,20 +80,8 @@ private:
     }
 
     // replace users
-    while (!node->users().empty()) {
-      auto *U = *node->users().begin();
-
-      auto &&It = std::find_if(U->operands().begin(), U->operands().end(),
-                               [&](auto &&elem) { return elem == node; });
-      assert(It != U->operands().end());
-
-      U->setOperand(It - U->operands().begin(), folded);
-    }
-
-    // clear original node operands
-    for (size_t i = 0; i < node->opCount(); ++i) {
-      node->setOperand(i, nullptr);
-    }
+    node->replaceWith(folded);
+    node->detach();
 
     return folded;
   }

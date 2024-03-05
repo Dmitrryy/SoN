@@ -78,6 +78,30 @@ public:
     }
     opPlace = operand;
   }
+
+  void swapOperands(size_t idx1, size_t idx2) {
+    std::swap(m_operands.at(idx1), m_operands.at(idx2));
+  }
+
+  void detach() {
+    // drop operands
+    for (size_t i = 0; i < opCount(); ++i) {
+      setOperand(i, nullptr);
+    }
+    // drop users
+    replaceWith(nullptr);
+  }
+
+  void replaceWith(Node *newNode) {
+    while (!users().empty()) {
+      auto *U = *users().begin();
+      auto &&It = std::find_if(U->operands().begin(), U->operands().end(),
+                               [&](auto &&elem) { return elem == this; });
+      assert(It != U->operands().end());
+      U->setOperand(It - U->operands().begin(), newNode);
+    }
+  }
+
 protected:
   auto addOperand(Node *operand) {
     auto idx = m_operands.size();
@@ -519,7 +543,7 @@ public:
   auto numVals() const noexcept { return opCount() - 1; }
   void setVal(size_t id, Node *val) { setOperand(id + 1, val); }
   Node *getVal(size_t id) const { return operand(id + 1); }
-  Node *getValOf(RegionNodeBase *region) { 
+  Node *getValOf(RegionNodeBase *region) {
     auto &&preds = getInput()->predecessors();
     for (size_t idx = 0; idx < preds.size(); ++idx) {
       if (region == preds[idx]) {
