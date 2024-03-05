@@ -120,7 +120,19 @@ private:
   }
 
   bool _tryShl(Function &F, ShlNode *node) {
-    // TODO
+    // Try 1:
+    // Shl V, 0
+    // ->
+    // V
+    if (isa<ConstantNode>(node->operand(1))) {
+      auto *c = static_cast<ConstantNode *>(node->operand(1));
+      if (c->getConstant() == 0) {
+        node->replaceWith(node->operand(0));
+        node->detach();
+        return true;
+      }
+    }
+
     return false;
   }
 

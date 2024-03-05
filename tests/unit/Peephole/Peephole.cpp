@@ -12,7 +12,7 @@ using namespace son;
 TEST(Peephole, test_peephole_add) {
   ASSERT_TRUE(true);
   FunctionType fnTy(ValueType::Int32, {ValueType::Int32});
-  Function F("Liveness_test_lecture", fnTy);
+  Function F("test", fnTy);
 
   // CFG
   auto N0 = F.getStart();
@@ -36,7 +36,7 @@ TEST(Peephole, test_peephole_add) {
 
   EXPECT_TRUE(F.verify());
 
-  // func i32 Liveness_test_lecture(i32 %0) {
+  // func i32 test(i32 %0) {
   // entry:
   //   Jmp exit
   //
@@ -65,7 +65,7 @@ TEST(Peephole, test_peephole_add) {
   ConstantFolding CF;
   PH.run(F);
 
-  // func i32 Liveness_test_lecture(i32 %0) {
+  // func i32 test(i32 %0) {
   // entry:
   //   Jmp exit
   //
@@ -89,7 +89,7 @@ TEST(Peephole, test_peephole_add) {
   PH.run(F);
   CF.run(F);
 
-  // func i32 Liveness_test_lecture(i32 %0) {
+  // func i32 test(i32 %0) {
   // entry:
   //   Jmp exit
   //
@@ -116,7 +116,7 @@ TEST(Peephole, test_peephole_add) {
 TEST(Peephole, test_peephole_xor) {
   ASSERT_TRUE(true);
   FunctionType fnTy(ValueType::Int32, {ValueType::Int32});
-  Function F("Liveness_test_lecture", fnTy);
+  Function F("test", fnTy);
 
   // CFG
   auto N0 = F.getStart();
@@ -137,7 +137,7 @@ TEST(Peephole, test_peephole_xor) {
 
   EXPECT_TRUE(F.verify());
 
-  // func i32 Liveness_test_lecture(i32 %0) {
+  // func i32 test(i32 %0) {
   // entry:
   //   Jmp exit
   //
@@ -162,7 +162,7 @@ TEST(Peephole, test_peephole_xor) {
   ConstantFolding CF;
   PH.run(F);
 
-  // func i32 Liveness_test_lecture(i32 %0) {
+  // func i32 test(i32 %0) {
   // entry:
   //   Jmp exit
   //
@@ -182,7 +182,7 @@ TEST(Peephole, test_peephole_xor) {
   PH.run(F);
   CF.run(F);
 
-  // func i32 Liveness_test_lecture(i32 %0) {
+  // func i32 test(i32 %0) {
   // entry:
   //   Jmp exit
   //
@@ -202,4 +202,66 @@ TEST(Peephole, test_peephole_xor) {
               isa<FunctionArgNode>(retXor->operand(1)));
   EXPECT_TRUE(isa<ConstantNode>(retXor->operand(0)) ||
               isa<ConstantNode>(retXor->operand(1)));
+}
+
+TEST(Peephole, test_peephole_shl) {
+  ASSERT_TRUE(true);
+  FunctionType fnTy(ValueType::Int32, {ValueType::Int32});
+  Function F("test", fnTy);
+
+  // CFG
+  auto N0 = F.getStart();
+  auto N1 = F.getEnd();
+
+  auto C0 = F.create<ConstantNode>(ValueType::Int32, 0);
+  auto C3 = F.create<ConstantNode>(ValueType::Int32, 3);
+
+  auto jmp_N0_to_N1 = F.create<JmpNode>(N0);
+  N1->addCFInput(jmp_N0_to_N1);
+
+  auto V1 = F.create<ShlNode>(F.getArg(0), F.getArg(0));
+  auto V2 = F.create<ShlNode>(V1, C0);
+
+  auto Ret = F.create<RetNode>(N1, V2);
+
+  EXPECT_TRUE(F.verify());
+
+  // func i32 test(i32 %0) {
+  // entry:
+  //   Jmp exit
+  // 
+  // exit: /* Pred: entry */
+  //   %0 = i32 FunctionArg(0)
+  //   V1 = i32 Shl i32 %0, i32 %0
+  //   C0 = i32 0
+  //   V2 = i32 Shl i32 V1, i32 C0
+  //   Ret void exit, i32 V2
+  // 
+  // }
+  Function::NamesMapTy Names = {{C0, "C0"}, {C3, "C3"}, {V1, "V1"}, {V2, "V2"}};
+  auto DumpNames = Names;
+  F.nameNodes(DumpNames);
+  F.dump(std::cout, DumpNames);
+
+  Peephole PH;
+  ConstantFolding CF;
+  PH.run(F);
+
+  // func i32 test(i32 %0) {
+  // entry:
+  //   Jmp exit
+  // 
+  // exit: /* Pred: entry */
+  //   %0 = i32 FunctionArg(0)
+  //   V1 = i32 Shl i32 %0, i32 %0
+  //   Ret void exit, i32 V1
+  // 
+  // }
+  F.nameNodes(DumpNames);
+  F.dump(std::cout, DumpNames);
+
+  EXPECT_TRUE(isa<ShlNode>(Ret->getRetValue()));
+  auto *retv = static_cast<ShlNode *>(Ret->getRetValue());
+  EXPECT_TRUE(isa<FunctionArgNode>(retv->operand(0)) &&
+              isa<FunctionArgNode>(retv->operand(1)));
 }
