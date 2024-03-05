@@ -94,6 +94,10 @@ private:
       nextConst = static_cast<ConstantNode *>(nextAdd->operand(0));
     }
 
+    if (!nonConst) {
+      return false;
+    }
+
     // check users
     if (nextAdd->usersCount() > 1) {
       return false;
