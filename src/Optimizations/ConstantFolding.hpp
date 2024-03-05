@@ -43,7 +43,7 @@ private:
 
     for (auto &&n : F) {
       auto *node = n.get();
-      if (canFold(node)) {
+      if (node->usersCount() > 0 && canFold(node)) {
         res.push_back(node);
       }
     }
@@ -88,6 +88,11 @@ private:
       assert(It != U->operands().end());
 
       U->setOperand(It - U->operands().begin(), folded);
+    }
+
+    // clear original node operands
+    for (size_t i = 0; i < node->opCount(); ++i) {
+      node->setOperand(i, nullptr);
     }
 
     return folded;
