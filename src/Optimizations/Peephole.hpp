@@ -30,9 +30,9 @@ public:
       if (isa<AddNode>(node)) {
         _tryAdd(F, static_cast<AddNode *>(node));
       } else if (isa<ShlNode>(node)) {
-        _tryShl(static_cast<ShlNode *>(node));
+        _tryShl(F, static_cast<ShlNode *>(node));
       } else if (isa<XorNode>(node)) {
-        _tryXor(static_cast<XorNode *>(node));
+        _tryXor(F, static_cast<XorNode *>(node));
       }
     }
   }
@@ -119,12 +119,37 @@ private:
     return false;
   }
 
-  bool _tryShl(ShlNode *node) {
+  bool _tryShl(Function &F, ShlNode *node) {
     // TODO
     return false;
   }
-  bool _tryXor(XorNode *node) {
-    // TODO
+
+  bool _tryXor(Function &F, XorNode *node) {
+    // Try 1:
+    // Xor V, V
+    // ->
+    // 0
+    if (node->operand(0) == node->operand(1)) {
+      auto *c0 = F.create<ConstantNode>(node->valueTy(), 0);
+
+      node->replaceWith(c0);
+      node->detach();
+      return true;
+    }
+
+    // Try 2:
+    // Xor V, 0
+    // ->
+    // V
+    if (isa<ConstantNode>(node->operand(1))) {
+      auto *c = static_cast<ConstantNode *>(node->operand(1));
+      if (c->getConstant() == 0) {
+        node->replaceWith(node->operand(0));
+        node->detach();
+        return true;
+      }
+    }
+
     return false;
   }
 };
