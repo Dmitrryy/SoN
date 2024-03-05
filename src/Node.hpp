@@ -359,12 +359,13 @@ public:
     addOperand(input);
     addCFInput(args...);
   }
-  template <> void addCFInput(CFNode *input) { addOperand(input); }
 
   static bool classof(const Node *node) noexcept {
     return node->nodeTy() == NodeType::Region;
   }
 }; // class RegionNode
+
+template <> inline void RegionNode::addCFInput(CFNode *input) { addOperand(input); }
 
 class StartNode : public RegionNodeBase {
   friend Function;
@@ -386,12 +387,13 @@ public:
     addOperand(input);
     addCFInput(args...);
   }
-  template <> void addCFInput(CFNode *input) { addOperand(input); }
 
   static bool classof(const Node *node) noexcept {
     return node->nodeTy() == NodeType::End;
   }
 }; // class EndNode
+
+template <> inline void EndNode::addCFInput(CFNode *input) { addOperand(input); }
 
 //=------------------------------------------------------------------
 // control: If, Jmp, Ret
