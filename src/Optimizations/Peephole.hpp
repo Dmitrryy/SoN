@@ -23,6 +23,10 @@ public:
       Node *node = workStack.back();
       workStack.pop_back();
 
+      if (node->usersCount() == 0) {
+        continue;
+      }
+
       if (isa<AddNode>(node)) {
         _tryAdd(F, static_cast<AddNode *>(node));
       } else if (isa<ShlNode>(node)) {
@@ -59,8 +63,15 @@ private:
   }
 
   bool _tryAdd(Function &F, AddNode *node) {
-    if (node->usersCount() == 0) {
-      return false;
+    // Try 0:
+    // Add V, 0
+    if (isa<ConstantNode>(node->operand(1))) {
+      auto *c = static_cast<ConstantNode *>(node->operand(1));
+      if (c->getConstant() == 0) {
+        node->replaceWith(node->operand(0));
+        node->detach();
+        return true;
+      }
     }
 
     // Try 1:

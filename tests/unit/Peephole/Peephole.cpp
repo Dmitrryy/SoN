@@ -18,6 +18,7 @@ TEST(Peephole, test_peephole_add) {
   auto N0 = F.getStart();
   auto N1 = F.getEnd();
 
+  auto C0 = F.create<ConstantNode>(ValueType::Int32, 0);
   auto V0 = F.create<ConstantNode>(ValueType::Int32, 1);
   auto V1 = F.create<ConstantNode>(ValueType::Int32, 2);
   auto V2 = F.create<ConstantNode>(ValueType::Int32, 3);
@@ -26,7 +27,8 @@ TEST(Peephole, test_peephole_add) {
   N1->addCFInput(jmp_N0_to_N1);
 
   auto Arg2 = F.create<AddNode>(F.getArg(0), F.getArg(0));
-  auto V3 = F.create<AddNode>(Arg2, V0);
+  auto Arg2_0 = F.create<AddNode>(C0, Arg2);
+  auto V3 = F.create<AddNode>(Arg2_0, V0);
   auto V4 = F.create<AddNode>(V3, V1);
   auto V5 = F.create<AddNode>(V2, V4);
 
@@ -37,17 +39,20 @@ TEST(Peephole, test_peephole_add) {
   // func i32 Liveness_test_lecture(i32 %0) {
   // entry:
   //   Jmp exit
-  //
+  // 
   // exit: /* Pred: entry */
-  //   V0 = i32 1
   //   %0 = i32 FunctionArg(0)
-  //   V3 = i32 Add i32 %0, i32 V0
+  //   Arg2 = i32 Add i32 %0, i32 %0
+  //   %1 = i32 0
+  //   %7 = i32 Add i32 %1, i32 Arg2
+  //   V0 = i32 1
+  //   V3 = i32 Add i32 %7, i32 V0
   //   V1 = i32 2
   //   V4 = i32 Add i32 V3, i32 V1
   //   V2 = i32 3
-  //   V5 = i32 Add i32 V4, i32 V2
+  //   V5 = i32 Add i32 V2, i32 V4
   //   Ret void exit, i32 V5
-  //
+  // 
   // }
   Function::NamesMapTy Names = {{V0, "V0"},    {V1, "V1"}, {V2, "V2"},
                                 {V3, "V3"},    {V4, "V4"}, {V5, "V5"},
@@ -63,19 +68,19 @@ TEST(Peephole, test_peephole_add) {
   // func i32 Liveness_test_lecture(i32 %0) {
   // entry:
   //   Jmp exit
-  //
+  // 
   // exit: /* Pred: entry */
-  //   %10 = i32 1
+  //   %12 = i32 1
   //   V2 = i32 3
   //   V1 = i32 2
   //   V0 = i32 1
   //   %0 = i32 FunctionArg(0)
-  //   %11 = i32 Shl i32 %0, i32 %10
+  //   %13 = i32 Shl i32 %0, i32 %12
   //   V4 = i32 Add i32 V2, i32 V1
-  //   V3 = i32 Add i32 %11, i32 V0
+  //   V3 = i32 Add i32 V0, i32 %13
   //   V5 = i32 Add i32 V4, i32 V3
   //   Ret void exit, i32 V5
-  //
+  // 
   // }
   F.nameNodes(DumpNames);
   F.dump(std::cout, DumpNames);
@@ -87,15 +92,15 @@ TEST(Peephole, test_peephole_add) {
   // func i32 Liveness_test_lecture(i32 %0) {
   // entry:
   //   Jmp exit
-  //
+  // 
   // exit: /* Pred: entry */
-  //   %10 = i32 1
+  //   %12 = i32 1
   //   %0 = i32 FunctionArg(0)
-  //   %13 = i32 6
-  //   %11 = i32 Shl i32 %0, i32 %10
-  //   V5 = i32 Add i32 %13, i32 %11
+  //   %15 = i32 6
+  //   %13 = i32 Shl i32 %0, i32 %12
+  //   V5 = i32 Add i32 %15, i32 %13
   //   Ret void exit, i32 V5
-  //
+  // 
   // }
   F.nameNodes(DumpNames);
   F.dump(std::cout, DumpNames);
