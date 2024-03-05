@@ -8,7 +8,7 @@
 
 using namespace son;
 
-TEST(Liveness, test_lecture) {
+TEST(ConstantFolding, test_constantFolding) {
   ASSERT_TRUE(true);
   FunctionType fnTy(ValueType::Int32, {});
   Function F("Liveness_test_lecture", fnTy);
@@ -32,7 +32,7 @@ TEST(Liveness, test_lecture) {
 
   auto V7 = F.create<AddNode>(V5, V6);
 
-  F.create<RetNode>(N1, V7);
+  auto Ret = F.create<RetNode>(N1, V7);
 
   EXPECT_TRUE(F.verify());
 
@@ -69,4 +69,7 @@ TEST(Liveness, test_lecture) {
   // }
   F.nameNodes(DumpNames);
   F.dump(std::cout, DumpNames);
+
+  EXPECT_TRUE(isa<ConstantNode>(Ret->getRetValue()));
+  EXPECT_EQ(static_cast<ConstantNode *>(Ret->getRetValue())->getConstant(), 197);
 }
