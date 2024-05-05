@@ -81,6 +81,9 @@ struct GraphChecker : public InstVisitor<GraphChecker> {
         expected(node.valueTy() == ValueType::Void,
                  "[CallBuiltinNode] Expected Void ret type, got: " +
                      getTyName(node.valueTy()));
+        expected(isa<ConstantNode>(node.operand(1)),
+                 "[CallBuiltinNode] Second argument expected to be constant, got: " +
+                     getOpcName(node.operand(1)->nodeTy()));
       }
     } else {
       expected(false, "[CallBuiltinNode] Unknown builtin: " + node.getName());
