@@ -33,12 +33,12 @@ struct GraphChecker : public InstVisitor<GraphChecker> {
     }
 
     for (auto &&s : node.operands()) {
-      expected(isa<JmpNode, IfTrueNode, IfFalseNode, RetNode>(s),
+      expected(isa<JmpNode, IfTrueNode, IfFalseNode, RetNode, CallNode>(s),
                "[Region] Unexpected Region input: " + getOpcName(s->nodeTy()));
     }
 
     for (auto &&s : node.users()) {
-      expected(isa<JmpNode, IfNode, PhiNode, RetNode>(s),
+      expected(isa<JmpNode, IfNode, PhiNode, RetNode, CallNode>(s),
                "[Region] Unexpected Region users " + getOpcName(s->nodeTy()));
     }
 
@@ -130,6 +130,8 @@ getUserRegions(Node *node,
   for (auto *const U : node->users()) {
     if (isa<RetNode>(U)) {
       res.push_back(dynamic_cast<RetNode *>(U)->getInputCF());
+    } else if (isa<CallNode>(U)) {
+      res.push_back(dynamic_cast<CallNode *>(U)->getCVInput());
     } else if (isa<IfNode>(U)) {
       res.push_back(dynamic_cast<IfNode *>(U)->getInputCF());
     } else if (isa<PhiNode>(U)) {

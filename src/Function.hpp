@@ -66,6 +66,10 @@ public:
 
   Function copy() const;
 
+  void addNode(std::unique_ptr<Node> &&node) {
+    m_graph.emplace_back(std::move(node));
+  }
+
   //=------------------------------------------------------------------
   // Verification
   //=------------------------------------------------------------------

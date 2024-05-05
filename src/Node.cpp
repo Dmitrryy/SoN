@@ -35,7 +35,14 @@ std::vector<RegionNodeBase *> RegionNodeBase::successors() const {
       assert(S);
       result.push_back(S);
     }
+  } else if (isa<CallNode>(Term)) {
+    for (auto &&U : Term->users()) {
+      if (isa<RegionNode>(U)) {
+        result.push_back(dynamic_cast<RegionNode *>(U));
+      }
+    }
   }
+
   return result;
 }
 
@@ -52,6 +59,9 @@ std::vector<RegionNodeBase *> RegionNodeBase::predecessors() const {
       auto *If = dynamic_cast<IfNode *>(operand->operand(0));
       assert(If);
       result.push_back(If->getInputCF());
+    } else if (isa<CallNode>(operand)) {
+      auto CN = dynamic_cast<CallNode *>(operand);
+      result.push_back(CN->getCVInput());
     }
   }
 
@@ -60,20 +70,22 @@ std::vector<RegionNodeBase *> RegionNodeBase::predecessors() const {
 
 CFNode *RegionNodeBase::terminator() const {
   for (auto &&Operand : users()) {
-    if (isa<RetNode, JmpNode, IfNode>(Operand)) {
+    if (isa<RetNode, JmpNode, IfNode, CallNode>(Operand)) {
       return dynamic_cast<CFNode *>(Operand);
     }
   }
   return nullptr;
 }
 
-CallNode::CallNode(Function &Callee, const std::vector<Node *> &args)
-    : Node(NodeType::Call, Callee.getFnTy().retType, args.size())
-    , m_callee(&Callee) {
-      for (size_t i = 0; i < args.size(); ++i) {
-        assert(args[i]->valueTy() == Callee.getFnTy().argsTypes[i]);
-        setOperand(i, args[i]);
-      }
-    }
+CallNode::CallNode(RegionNodeBase *cfInput, Function &Callee,
+                   const std::vector<Node *> &args)
+    : CFNode(NodeType::Call, Callee.getFnTy().retType, args.size() + 1),
+      m_callee(&Callee) {
+  for (size_t i = 0; i < args.size(); ++i) {
+    assert(args[i]->valueTy() == Callee.getFnTy().argsTypes[i]);
+    setOperand(i, args[i]);
+  }
+  setOperand(args.size(), cfInput);
+}
 
 } // namespace son

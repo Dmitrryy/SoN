@@ -31,7 +31,7 @@ class Node {
   NodeType m_nodeType = NodeType::Unknown;
 
   friend Function;
-  
+
 protected:
   Node(NodeType nTy) : m_nodeType(nTy) {}
   Node(NodeType nTy, ValueType vTy) : m_nodeType(nTy), m_valType(vTy) {}
@@ -654,13 +654,17 @@ public:
 
 //=------------------------------------------------------------------
 // Call node
-class CallNode : public Node {
+class CallNode : public CFNode {
   friend Function;
 
 public:
-  CallNode(Function &Callee, const std::vector<Node *> &args);
+  CallNode(RegionNodeBase *cfInput, Function &Callee, const std::vector<Node *> &args);
 
   Function *getCallee() const { return m_callee; }
+
+  RegionNodeBase *getCVInput() const {
+    return dynamic_cast<RegionNodeBase *>(operand(opCount() - 1));
+  }
 
   virtual std::unique_ptr<Node> clone() const override {
     return std::make_unique<CallNode>(*this);
