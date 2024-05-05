@@ -345,3 +345,15 @@ TEST(Function, dump_test6) {
   Func.nameNodes(FuncNames);
   Func.dump(std::cout, FuncNames);
 }
+
+TEST(Function, copy_test6) {
+  BUILD_GRAPH_TEST6(Func);
+  EXPECT_TRUE(Func.verify());
+
+  Func.nameNodes(FuncNames);
+  Func.dump(std::cout, FuncNames);
+
+  auto Clone = Func.copy();
+  EXPECT_TRUE(Clone.verify());
+  Clone.dump(std::cout);
+}

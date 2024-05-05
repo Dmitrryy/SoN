@@ -5,6 +5,7 @@
 #include "Node.hpp"
 
 #include <algorithm>
+#include <memory>
 #include <iostream>
 #include <numeric>
 #include <string>
@@ -232,6 +233,89 @@ std::vector<RegionNodeBase *> Function::linearize(const DomTree &DT,
   }
 
   return result;
+}
+
+// Algorithm:
+// 1. Copy all nodes from m_graph and create mapping: origNode -> copyNode
+// 2. Map all operands in copy nodes to copyNodes.
+Function Function::copy() const {
+  Function FnCopy(m_name, m_fnType);
+
+  // 1
+  std::unordered_map<Node *, Node *> VMap;
+  FnCopy.m_graph.reserve(m_graph.size());
+  for (auto &&node : m_graph) {
+    if (!isa<FunctionArgNode>(node)) {
+      auto &&newNode = node->clone();
+      VMap[node.get()] = newNode.get();
+      FnCopy.m_graph.emplace_back(std::move(newNode));
+    }
+  }
+  FnCopy.m_start = std::unique_ptr<StartNode>(
+      dynamic_cast<StartNode *>(m_start->clone().release()));
+  FnCopy.m_end = std::unique_ptr<EndNode>(
+      dynamic_cast<EndNode *>(m_end->clone().release()));
+  // add start and end nodes
+  VMap[getStart()] = FnCopy.getStart();
+  VMap[getEnd()] = FnCopy.getEnd();
+  // add args
+  for (size_t i = 0; i < FnCopy.m_args.size(); ++i) {
+    auto &&new_arg = std::unique_ptr<FunctionArgNode>(
+        dynamic_cast<FunctionArgNode *>(m_args[i]->clone().release()));
+    VMap[m_args[i]] = new_arg.get();
+    FnCopy.m_args[i] = new_arg.get();
+    FnCopy.m_graph[i] = std::move(new_arg);
+  }
+
+  // 2
+  for (auto &&node : FnCopy.m_graph) {
+    // operands
+    auto &&ops = node->m_operands;
+    for (size_t i = 0; i < ops.size(); ++i) {
+      assert(VMap[ops[i]]);
+      ops[i] = VMap[ops[i]];
+    }
+    // users
+    std::unordered_multiset<Node *> new_users;
+    for (auto &&U : node->m_users) {
+      assert(VMap[U]);
+      new_users.emplace(VMap[U]);
+    }
+    node->m_users = new_users;
+  }
+  // start
+  {
+    //    operands
+    auto &&ops = FnCopy.getStart()->m_operands;
+    for (size_t i = 0; i < ops.size(); ++i) {
+      assert(VMap[ops[i]]);
+      ops[i] = VMap[ops[i]];
+    }
+    //    users
+    std::unordered_multiset<Node *> new_users;
+    for (auto &&U : FnCopy.getStart()->m_users) {
+      assert(VMap[U]);
+      new_users.emplace(VMap[U]);
+    }
+    FnCopy.getStart()->m_users = new_users;
+  }
+  // end
+  {
+    //    operands
+    auto &&ops = FnCopy.getEnd()->m_operands;
+    for (size_t i = 0; i < ops.size(); ++i) {
+      assert(VMap[ops[i]]);
+      ops[i] = VMap[ops[i]];
+    }
+    //    users
+    std::unordered_multiset<Node *> new_users;
+    for (auto &&U : FnCopy.getEnd()->m_users) {
+      assert(VMap[U]);
+      new_users.emplace(VMap[U]);
+    }
+    FnCopy.getEnd()->m_users = new_users;
+  }
+  return FnCopy;
 }
 
 //=------------------------------------------------------------------

@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <memory>
 #include <unordered_set>
 #include <vector>
 
@@ -29,6 +30,8 @@ class Node {
   ValueType m_valType = ValueType::Void;
   NodeType m_nodeType = NodeType::Unknown;
 
+  friend Function;
+  
 protected:
   Node(NodeType nTy) : m_nodeType(nTy) {}
   Node(NodeType nTy, ValueType vTy) : m_nodeType(nTy), m_valType(vTy) {}
@@ -37,6 +40,8 @@ protected:
 
 public:
   virtual ~Node() = default;
+
+  virtual std::unique_ptr<Node> clone() const = 0;
 
 public:
   const auto nodeTy() const noexcept { return m_nodeType; }
@@ -144,6 +149,10 @@ public:
     return node->nodeTy() == NodeType::Constant;
   }
 
+  virtual std::unique_ptr<Node> clone() const override {
+    return std::make_unique<ConstantNode>(*this);
+  }
+
   void dump(std::ostream &stream,
             const std::unordered_map<const Node *, std::string> &names)
       const override {
@@ -163,6 +172,10 @@ public:
       : Node(NodeType::FunctionArg, type), m_idx(idx) {}
 
   auto getIdx() const { return m_idx; }
+
+  virtual std::unique_ptr<Node> clone() const override {
+    return std::make_unique<FunctionArgNode>(*this);
+  }
 
   void dump(std::ostream &stream,
             const std::unordered_map<const Node *, std::string> &names)
@@ -201,6 +214,10 @@ public:
       : CastOperationNode(NodeType::Trunk, operand, operand->valueTy(), resTy) {
   }
 
+  virtual std::unique_ptr<Node> clone() const override {
+    return std::make_unique<TrunkNode>(*this);
+  }
+
   static bool classof(const Node *node) noexcept {
     return node->nodeTy() == NodeType::Trunk;
   }
@@ -212,6 +229,10 @@ class ZextNode : public CastOperationNode {
 public:
   ZextNode(Node *operand, ValueType resTy)
       : CastOperationNode(NodeType::Zext, operand, operand->valueTy(), resTy) {}
+
+  virtual std::unique_ptr<Node> clone() const override {
+    return std::make_unique<ZextNode>(*this);
+  }
 
   static bool classof(const Node *node) noexcept {
     return node->nodeTy() == NodeType::Zext;
@@ -225,6 +246,10 @@ public:
   SextNode(Node *operand, ValueType resTy)
       : CastOperationNode(NodeType::Sext, operand, operand->valueTy(), resTy) {}
 
+  virtual std::unique_ptr<Node> clone() const override {
+    return std::make_unique<SextNode>(*this);
+  }
+
   static bool classof(const Node *node) noexcept {
     return node->nodeTy() == NodeType::Sext;
   }
@@ -236,6 +261,10 @@ class BitCastNode : public CastOperationNode {
 public:
   BitCastNode(Node *operand, ValueType resTy)
       : CastOperationNode(NodeType::Sext, operand, operand->valueTy(), resTy) {}
+
+  virtual std::unique_ptr<Node> clone() const override {
+    return std::make_unique<BitCastNode>(*this);
+  }
 
   static bool classof(const Node *node) noexcept {
     return node->nodeTy() == NodeType::Sext;
@@ -253,6 +282,10 @@ public:
     setOperand(0, operand);
   }
 
+  virtual std::unique_ptr<Node> clone() const override {
+    return std::make_unique<NotNode>(*this);
+  }
+
   static bool classof(const Node *node) noexcept {
     return node->nodeTy() == NodeType::Not;
   }
@@ -265,6 +298,10 @@ public:
   NegNode(Node *operand) : Node(NodeType::Neg, operand->valueTy(), 1) {
     assert(operand->valueTy() != ValueType::Void);
     setOperand(0, operand);
+  }
+
+  virtual std::unique_ptr<Node> clone() const override {
+    return std::make_unique<NegNode>(*this);
   }
 
   static bool classof(const Node *node) noexcept {
@@ -289,6 +326,9 @@ protected:
     friend Function;                                                           \
                                                                                \
   public:                                                                      \
+    virtual std::unique_ptr<Node> clone() const override {                     \
+      return std::make_unique<opc_name##Node>(*this);                          \
+    }                                                                          \
     opc_name##Node(Node *lhs, Node *rhs)                                       \
         : BinOpNode(lhs, rhs, NodeType::opc_name) {}                           \
     static bool classof(const Node *node) noexcept {                           \
@@ -317,6 +357,9 @@ protected:
     friend Function;                                                           \
                                                                                \
   public:                                                                      \
+    virtual std::unique_ptr<Node> clone() const override {                     \
+      return std::make_unique<opc_name##Node>(*this);                          \
+    }                                                                          \
     opc_name##Node(Node *lhs, Node *rhs)                                       \
         : CmpNode(lhs, rhs, NodeType::opc_name) {}                             \
     static bool classof(const Node *node) noexcept {                           \
@@ -359,6 +402,10 @@ public:
     addCFInput(args...);
   }
 
+  virtual std::unique_ptr<Node> clone() const override {
+    return std::make_unique<RegionNode>(*this);
+  }
+
   static bool classof(const Node *node) noexcept {
     return node->nodeTy() == NodeType::Region;
   }
@@ -373,6 +420,11 @@ class StartNode : public RegionNodeBase {
 
 public:
   StartNode() : RegionNodeBase(NodeType::Start) {}
+
+  virtual std::unique_ptr<Node> clone() const override {
+    return std::make_unique<StartNode>(*this);
+  }
+
   static bool classof(const Node *node) noexcept {
     return node->nodeTy() == NodeType::Start;
   }
@@ -387,6 +439,10 @@ public:
   template <typename... Args> void addCFInput(CFNode *input, Args... args) {
     addOperand(input);
     addCFInput(args...);
+  }
+
+  virtual std::unique_ptr<Node> clone() const override {
+    return std::make_unique<EndNode>(*this);
   }
 
   static bool classof(const Node *node) noexcept {
@@ -453,6 +509,10 @@ public:
            << ", F:" << names.at(FN);
   }
 
+  virtual std::unique_ptr<Node> clone() const override {
+    return std::make_unique<IfNode>(*this);
+  }
+
   static bool classof(const Node *node) noexcept {
     return node->nodeTy() == NodeType::If;
   }
@@ -468,6 +528,10 @@ public:
   }
   void setInputCF(CFNode *input) { setOperand(0, input); }
 
+  virtual std::unique_ptr<Node> clone() const override {
+    return std::make_unique<IfFalseNode>(*this);
+  }
+
   static bool classof(const Node *node) noexcept {
     return node->nodeTy() == NodeType::IfFalse;
   }
@@ -482,6 +546,10 @@ public:
     setInputCF(input);
   }
   void setInputCF(CFNode *input) { setOperand(0, input); }
+
+  virtual std::unique_ptr<Node> clone() const override {
+    return std::make_unique<IfTrueNode>(*this);
+  }
 
   static bool classof(const Node *node) noexcept {
     return node->nodeTy() == NodeType::IfTrue;
@@ -502,6 +570,10 @@ public:
     stream << getOpcName(nodeTy());
 
     stream << ' ' << names.at(*users().begin());
+  }
+
+  virtual std::unique_ptr<Node> clone() const override {
+    return std::make_unique<JmpNode>(*this);
   }
 
   static bool classof(const Node *node) noexcept {
@@ -529,6 +601,11 @@ public:
   auto retTy() const {
     return (opCount() == 1) ? ValueType::Void : operand(1)->valueTy();
   }
+
+  virtual std::unique_ptr<Node> clone() const override {
+    return std::make_unique<RetNode>(*this);
+  }
+
   static bool classof(const Node *node) noexcept {
     return node->nodeTy() == NodeType::Ret;
   }
@@ -566,6 +643,10 @@ public:
     return getInput()->predecessors().at(idx);
   }
 
+  virtual std::unique_ptr<Node> clone() const override {
+    return std::make_unique<PhiNode>(*this);
+  }
+
   static bool classof(const Node *node) noexcept {
     return node->nodeTy() == NodeType::Phi;
   }
@@ -580,6 +661,14 @@ public:
   CallNode(Function &Callee, const std::vector<Node *> &args);
 
   Function *getCallee() const { return m_callee; }
+
+  virtual std::unique_ptr<Node> clone() const override {
+    return std::make_unique<CallNode>(*this);
+  }
+
+  static bool classof(const Node *node) noexcept {
+    return node->nodeTy() == NodeType::Call;
+  }
 
 private:
   Function *m_callee = nullptr;

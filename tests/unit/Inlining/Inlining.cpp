@@ -8,7 +8,7 @@
 
 using namespace son;
 
-TEST(Peephole, test_peephole_add) {
+TEST(Inlining, test_seminar) {
   // Callee
   //=------
   FunctionType CalleeFnTy(ValueType::Int32,
