@@ -4,8 +4,6 @@
 #include "Node.hpp"
 #include "Opcodes.hpp"
 
-#include <iostream>
-#include <unordered_map>
 #include <vector>
 
 namespace son {

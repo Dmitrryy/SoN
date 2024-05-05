@@ -35,7 +35,7 @@ std::vector<RegionNodeBase *> RegionNodeBase::successors() const {
       assert(S);
       result.push_back(S);
     }
-  } else if (isa<CallNode>(Term)) {
+  } else if (isa<CallNode, CallBuiltinNode>(Term)) {
     for (auto &&U : Term->users()) {
       if (isa<RegionNode>(U)) {
         result.push_back(dynamic_cast<RegionNode *>(U));
@@ -62,6 +62,9 @@ std::vector<RegionNodeBase *> RegionNodeBase::predecessors() const {
     } else if (isa<CallNode>(operand)) {
       auto CN = dynamic_cast<CallNode *>(operand);
       result.push_back(CN->getCVInput());
+    } else if (isa<CallBuiltinNode>(operand)) {
+      auto CN = dynamic_cast<CallBuiltinNode *>(operand);
+      result.push_back(CN->getCVInput());
     }
   }
 
@@ -70,7 +73,7 @@ std::vector<RegionNodeBase *> RegionNodeBase::predecessors() const {
 
 CFNode *RegionNodeBase::terminator() const {
   for (auto &&Operand : users()) {
-    if (isa<RetNode, JmpNode, IfNode, CallNode>(Operand)) {
+    if (isa<RetNode, JmpNode, IfNode, CallNode, CallBuiltinNode>(Operand)) {
       return dynamic_cast<CFNode *>(Operand);
     }
   }

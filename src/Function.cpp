@@ -3,10 +3,11 @@
 #include "Analyses/Loop.hpp"
 #include "InstVisitor.hpp"
 #include "Node.hpp"
+#include "Opcodes.hpp"
 
 #include <algorithm>
-#include <memory>
 #include <iostream>
+#include <memory>
 #include <numeric>
 #include <string>
 #include <unordered_map>
@@ -18,11 +19,12 @@ namespace {
 struct GraphChecker : public InstVisitor<GraphChecker> {
   bool isValid = true;
 
-  void expected(bool cond, const std::string &msg) {
+  bool expected(bool cond, const std::string &msg) {
     if (!cond) {
       isValid = false;
       std::cerr << msg << std::endl;
     }
+    return cond;
   }
 
   void visitRegionNode(RegionNode &node) {
@@ -33,19 +35,55 @@ struct GraphChecker : public InstVisitor<GraphChecker> {
     }
 
     for (auto &&s : node.operands()) {
-      expected(isa<JmpNode, IfTrueNode, IfFalseNode, RetNode, CallNode>(s),
+      expected(isa<JmpNode, IfTrueNode, IfFalseNode, RetNode, CallNode,
+                   CallBuiltinNode>(s),
                "[Region] Unexpected Region input: " + getOpcName(s->nodeTy()));
     }
 
     for (auto &&s : node.users()) {
-      expected(isa<JmpNode, IfNode, PhiNode, RetNode, CallNode>(s),
-               "[Region] Unexpected Region users " + getOpcName(s->nodeTy()));
+      expected(
+          isa<JmpNode, IfNode, PhiNode, RetNode, CallNode, CallBuiltinNode>(s),
+          "[Region] Unexpected Region users " + getOpcName(s->nodeTy()));
     }
 
     for (auto &&p : node.successors()) {
       expected(isa<RegionNode, EndNode>(p),
                "[Region] Unexpected Region successor: " +
                    getOpcName(p->nodeTy()));
+    }
+  }
+
+  void visitCallBuiltinNode(CallBuiltinNode &node) {
+    auto &&name = node.getName();
+    const auto argsCount = node.opCount() - 1;
+    if (name == "nullCheck") {
+      if (expected(argsCount == 1,
+                   "[CallBuiltinNode] Expected 1 argument, got: " +
+                       std::to_string(argsCount))) {
+        expected(node.operand(0)->valueTy() != ValueType::Void,
+                 "[CallBuiltinNode] Arg should be integer type, got: " +
+                     getTyName(node.operand(0)->valueTy()));
+        expected(node.valueTy() == ValueType::Void,
+                 "[CallBuiltinNode] Expected Void ret type, got: " +
+                     getTyName(node.valueTy()));
+      }
+    } else if (name == "boundsCheck") {
+      if (expected(argsCount == 2,
+                   "[CallBuiltinNode] Expected 2 argument, got: " +
+                       std::to_string(argsCount))) {
+        expected(node.operand(0)->valueTy() == node.operand(1)->valueTy(),
+                 "[CallBuiltinNode] Expected similar types, got: " +
+                     getTyName(node.operand(0)->valueTy()) + ", " +
+                     getTyName(node.operand(1)->valueTy()));
+        expected(node.operand(0)->valueTy() != ValueType::Void,
+                 "[CallBuiltinNode] Arg should be integer type, got: " +
+                     getTyName(node.operand(0)->valueTy()));
+        expected(node.valueTy() == ValueType::Void,
+                 "[CallBuiltinNode] Expected Void ret type, got: " +
+                     getTyName(node.valueTy()));
+      }
+    } else {
+      expected(false, "[CallBuiltinNode] Unknown builtin: " + node.getName());
     }
   }
 
@@ -132,6 +170,8 @@ getUserRegions(Node *node,
       res.push_back(dynamic_cast<RetNode *>(U)->getInputCF());
     } else if (isa<CallNode>(U)) {
       res.push_back(dynamic_cast<CallNode *>(U)->getCVInput());
+    } else if (isa<CallBuiltinNode>(U)) {
+      res.push_back(dynamic_cast<CallBuiltinNode *>(U)->getCVInput());
     } else if (isa<IfNode>(U)) {
       res.push_back(dynamic_cast<IfNode *>(U)->getInputCF());
     } else if (isa<PhiNode>(U)) {

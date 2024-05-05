@@ -658,12 +658,22 @@ class CallNode : public CFNode {
   friend Function;
 
 public:
-  CallNode(RegionNodeBase *cfInput, Function &Callee, const std::vector<Node *> &args);
+  CallNode(RegionNodeBase *cfInput, Function &Callee,
+           const std::vector<Node *> &args);
 
   Function *getCallee() const { return m_callee; }
 
   RegionNodeBase *getCVInput() const {
     return dynamic_cast<RegionNodeBase *>(operand(opCount() - 1));
+  }
+
+  RegionNodeBase *getNextRegion() const {
+    for (auto &&U : users()) {
+      if (isa<RegionNode>(U)) {
+        return dynamic_cast<RegionNodeBase *>(U);
+      }
+    }
+    return nullptr;
   }
 
   virtual std::unique_ptr<Node> clone() const override {
@@ -674,8 +684,79 @@ public:
     return node->nodeTy() == NodeType::Call;
   }
 
+  void dump(std::ostream &stream,
+            const std::unordered_map<const Node *, std::string> &names)
+      const override {
+    if (valueTy() != ValueType::Void) {
+      stream << names.at(this) << " = " << getTyName(valueTy()) << ' ';
+    }
+    stream << getOpcName(nodeTy());
+    for (int i = 0; i < opCount() - 1; ++i) {
+      auto opr = operand(i);
+      stream << ((i == 0) ? " " : ", ");
+      stream << getTyName(opr->valueTy()) << ' ' << names.at(opr);
+    }
+    stream << " |-> " << names.at(getNextRegion());
+  }
+
 private:
   Function *m_callee = nullptr;
-};
+}; // class CallNode
+
+class CallBuiltinNode : public CFNode {
+  friend Function;
+
+public:
+  CallBuiltinNode(RegionNodeBase *cfInput, std::string name, ValueType retTy,
+                  const std::vector<Node *> &args)
+      : CFNode(NodeType::CallBuiltin, retTy, args.size() + 1),
+        m_name(std::move(name)) {
+    for (size_t i = 0; i < args.size(); ++i) {
+      setOperand(i, args[i]);
+    }
+    setOperand(args.size(), cfInput);
+  }
+
+  auto getName() const { return m_name; }
+
+  RegionNodeBase *getCVInput() const {
+    return dynamic_cast<RegionNodeBase *>(operand(opCount() - 1));
+  }
+
+  RegionNodeBase *getNextRegion() const {
+    for (auto &&U : users()) {
+      if (isa<RegionNode>(U)) {
+        return dynamic_cast<RegionNodeBase *>(U);
+      }
+    }
+    return nullptr;
+  }
+
+  virtual std::unique_ptr<Node> clone() const override {
+    return std::make_unique<CallBuiltinNode>(*this);
+  }
+
+  static bool classof(const Node *node) noexcept {
+    return node->nodeTy() == NodeType::CallBuiltin;
+  }
+
+  void dump(std::ostream &stream,
+            const std::unordered_map<const Node *, std::string> &names)
+      const override {
+    if (valueTy() != ValueType::Void) {
+      stream << names.at(this) << " = " << getTyName(valueTy()) << ' ';
+    }
+    stream << getOpcName(nodeTy()) << " \"" << m_name << "\"(";
+    for (int i = 0; i < opCount() - 1; ++i) {
+      auto opr = operand(i);
+      stream << ((i == 0) ? " " : ", ");
+      stream << getTyName(opr->valueTy()) << ' ' << names.at(opr);
+    }
+    stream << ") |-> " << names.at(getNextRegion());
+  }
+
+private:
+  std::string m_name;
+}; // class CallBuiltinNode
 
 } // namespace son
