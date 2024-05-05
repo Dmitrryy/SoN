@@ -3,9 +3,6 @@
 #include "Function.hpp"
 #include "Node.hpp"
 
-#include <algorithm>
-#include <stdexcept>
-#include <unordered_set>
 #include <vector>
 
 namespace son {

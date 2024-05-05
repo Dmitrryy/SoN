@@ -5,7 +5,6 @@
 #include "Node.hpp"
 
 #include <algorithm>
-#include <deque>
 #include <iostream>
 #include <numeric>
 #include <string>

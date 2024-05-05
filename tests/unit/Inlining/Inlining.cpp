@@ -53,6 +53,7 @@ TEST(Peephole, test_peephole_add) {
     Callee.nameNodes(DumpNames);
     Callee.dump(std::cout, DumpNames);
   }
+
   // Caller
   //=------
   FunctionType CallerFnTy(ValueType::Int32, {});
