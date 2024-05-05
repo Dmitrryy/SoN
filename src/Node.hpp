@@ -712,10 +712,10 @@ public:
     return dynamic_cast<RegionNodeBase *>(operand(opCount() - 1));
   }
 
-  RegionNodeBase *getNextRegion() const {
+  RegionNode *getNextRegion() const {
     for (auto &&U : users()) {
       if (isa<RegionNode>(U)) {
-        return dynamic_cast<RegionNodeBase *>(U);
+        return dynamic_cast<RegionNode *>(U);
       }
     }
     return nullptr;

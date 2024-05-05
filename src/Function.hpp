@@ -75,6 +75,15 @@ public:
   // Verification
   //=------------------------------------------------------------------
   bool verify();
+  void clean() {
+    std::vector<std::unique_ptr<Node>> newGraph;
+    for (auto &&node: m_graph) {
+      if (isa<FunctionArgNode>(node) || node->usersCount() > 0) {
+        newGraph.emplace_back(std::move(node));
+      }
+    }
+    m_graph = std::move(newGraph);
+  }
 
   //=------------------------------------------------------------------
   // ALGORITHMS

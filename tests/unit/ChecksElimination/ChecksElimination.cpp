@@ -4,6 +4,8 @@
 #include "Node.hpp"
 #include "Opcodes.hpp"
 
+#include "Optimizations/ChecksElimination.hpp"
+
 #include <iostream>
 #include <unistd.h>
 
@@ -58,8 +60,8 @@ TEST(ChecksElimination, zerocheck_0) {
   //   %3 = i32 10
   //   %1 = i32 FunctionArg(1)
   //   Use3 = i32 Add i32 %1, i32 %3
-  //   CallBuiltin "nullCheck"( i32 Use3) |-> %9
-  // 
+  //   CallBuiltin "nullCheck"(i32 %Use3) |-> %9
+  //
   // %9: /* Pred: entry */
   //   %2 = i32 1
   //   %0 = i32 FunctionArg(0)
@@ -67,23 +69,34 @@ TEST(ChecksElimination, zerocheck_0) {
   //   Use2 = i32 Mul i32 %0, i32 %2
   //   %7 = i1 CmpLT i32 Use2, i32 %6
   //   If i1 %7, T:B4, F:%13
-  // 
+  //
   // %13: /* Pred: %9 */
-  //   CallBuiltin "nullCheck"( i32 Use3) |-> B5
-  // 
+  //   CallBuiltin "nullCheck"(i32 %Use3) |-> B5
+  //
   // B5: /* Pred: %13 */
   //   Ret void B5, i32 Use2
-  // 
+  //
   // B4: /* Pred: %9 */
   //   Ret void B4, i32 Use3
-  // 
+  //
   // exit:
-  // 
+  //
   // }
   EXPECT_TRUE(F.verify());
   {
     Function::NamesMapTy Names = {
-        {F_Use2, "Use2"}, {F_Use3, "Use3"}, {F_B4, "B4"}, {F_B5, "B5"}};
+        {F_Use2, "%Use2"}, {F_Use3, "%Use3"}, {F_B4, "B4"}, {F_B5, "B5"}};
+    auto DumpNames = Names;
+    F.nameNodes(DumpNames);
+    F.dump(std::cout, DumpNames);
+  }
+
+  ChecksElimination CE;
+  CE.run(F);
+  EXPECT_TRUE(F.verify());
+  {
+    Function::NamesMapTy Names = {
+        {F_Use2, "%Use2"}, {F_Use3, "%Use3"}, {F_B4, "B4"}, {F_B5, "B5"}};
     auto DumpNames = Names;
     F.nameNodes(DumpNames);
     F.dump(std::cout, DumpNames);
