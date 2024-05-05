@@ -365,7 +365,9 @@ public:
   }
 }; // class RegionNode
 
-template <> inline void RegionNode::addCFInput(CFNode *input) { addOperand(input); }
+template <> inline void RegionNode::addCFInput(CFNode *input) {
+  addOperand(input);
+}
 
 class StartNode : public RegionNodeBase {
   friend Function;
@@ -393,7 +395,9 @@ public:
   }
 }; // class EndNode
 
-template <> inline void EndNode::addCFInput(CFNode *input) { addOperand(input); }
+template <> inline void EndNode::addCFInput(CFNode *input) {
+  addOperand(input);
+}
 
 //=------------------------------------------------------------------
 // control: If, Jmp, Ret
@@ -567,5 +571,19 @@ public:
     return node->nodeTy() == NodeType::Phi;
   }
 }; // class PhiNode
+
+//=------------------------------------------------------------------
+// Call node
+class CallNode : public Node {
+  friend Function;
+
+public:
+  CallNode(Function &Callee, const std::vector<Node *> &args);
+
+  Function *getCallee() const { return m_callee; }
+
+private:
+  Function *m_callee = nullptr;
+};
 
 } // namespace son

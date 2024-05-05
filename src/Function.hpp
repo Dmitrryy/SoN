@@ -12,11 +12,11 @@ class DomTree;
 class LoopInfo;
 
 struct FunctionType final {
-  ValueType m_retType = ValueType::Void;
-  std::vector<ValueType> m_argsTypes;
+  ValueType retType = ValueType::Void;
+  std::vector<ValueType> argsTypes;
 
   FunctionType(ValueType ret, const std::vector<ValueType> &args)
-      : m_retType(ret), m_argsTypes(args) {}
+      : retType(ret), argsTypes(args) {}
 };
 
 class Function final {
@@ -39,7 +39,7 @@ public:
 private:
   void createArgs() {
     assert(m_args.empty());
-    for (auto &&ty : m_fnType.m_argsTypes) {
+    for (auto &&ty : m_fnType.argsTypes) {
       assert(ty != ValueType::Void);
       m_args.emplace_back(create<FunctionArgNode>(ty, m_args.size()));
     }
@@ -61,6 +61,8 @@ public:
 
   auto begin() { return m_graph.begin(); }
   auto end() { return m_graph.end(); }
+
+  auto getFnTy() const { return m_fnType; }
 
   //=------------------------------------------------------------------
   // Verification

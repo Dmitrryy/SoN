@@ -1,4 +1,6 @@
 #include "Node.hpp"
+#include "Function.hpp"
+#include "Opcodes.hpp"
 
 namespace son {
 
@@ -24,10 +26,9 @@ std::vector<RegionNodeBase *> RegionNodeBase::successors() const {
     auto *S = dynamic_cast<RegionNodeBase *>(*Term->users().begin());
     assert(S);
     result.push_back(S);
-  }
-  else if (isa<IfNode>(Term)) {
+  } else if (isa<IfNode>(Term)) {
     assert(Term->usersCount() == 2);
-    for(auto &&U : Term->users()) {
+    for (auto &&U : Term->users()) {
       assert((isa<IfTrueNode, IfFalseNode>(U)));
       assert(U->usersCount() == 1);
       auto S = dynamic_cast<RegionNodeBase *>(*U->users().begin());
@@ -46,8 +47,7 @@ std::vector<RegionNodeBase *> RegionNodeBase::predecessors() const {
       auto *P = dynamic_cast<RegionNodeBase *>(operand->operand(0));
       assert(P);
       result.push_back(P);
-    }
-    else if (isa<IfTrueNode, IfFalseNode>(operand)) {
+    } else if (isa<IfTrueNode, IfFalseNode>(operand)) {
       assert(operand->opCount() == 1);
       auto *If = dynamic_cast<IfNode *>(operand->operand(0));
       assert(If);
@@ -66,5 +66,14 @@ CFNode *RegionNodeBase::terminator() const {
   }
   return nullptr;
 }
+
+CallNode::CallNode(Function &Callee, const std::vector<Node *> &args)
+    : Node(NodeType::Call, Callee.getFnTy().retType, args.size())
+    , m_callee(&Callee) {
+      for (size_t i = 0; i < args.size(); ++i) {
+        assert(args[i]->valueTy() == Callee.getFnTy().argsTypes[i]);
+        setOperand(i, args[i]);
+      }
+    }
 
 } // namespace son

@@ -462,7 +462,7 @@ void Function::dump(std::ostream &stream, const NamesMapTy &names) const {
   auto &&linRegs = linearize(DT, dfsResult, LI);
 
   // dump function prototype
-  stream << "func " << getTyName(m_fnType.m_retType) << " " << m_name << "(";
+  stream << "func " << getTyName(m_fnType.retType) << " " << m_name << "(";
   for (size_t i = 0; i < m_args.size(); ++i) {
     auto &&Arg = m_args.at(i);
     stream << (i == 0 ? "" : ", ") << getTyName(Arg->valueTy()) << ' '
