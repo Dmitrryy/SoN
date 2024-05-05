@@ -91,4 +91,19 @@ CallNode::CallNode(RegionNodeBase *cfInput, Function &Callee,
   setOperand(args.size(), cfInput);
 }
 
+void CallNode::dump(
+    std::ostream &stream,
+    const std::unordered_map<const Node *, std::string> &names) const /*override*/ {
+  if (valueTy() != ValueType::Void) {
+    stream << names.at(this) << " = " << getTyName(valueTy()) << ' ';
+  }
+  stream << getOpcName(nodeTy()) << " \"" << m_callee->getName() << "\"(";
+  for (int i = 0; i < opCount() - 1; ++i) {
+    auto opr = operand(i);
+    stream << ((i == 0) ? "" : ", ");
+    stream << getTyName(opr->valueTy()) << ' ' << names.at(opr);
+  }
+  stream << ") |-> " << names.at(getNextRegion());
+}
+
 } // namespace son

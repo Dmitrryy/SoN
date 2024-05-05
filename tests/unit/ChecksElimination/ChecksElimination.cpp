@@ -53,7 +53,33 @@ TEST(ChecksElimination, zerocheck_0) {
   auto F_B4_Ret = F.create<RetNode>(F_B4, F_Use3);
   F_N1->addCFInput(F_B4_Ret);
 
-
+  // func i32 F(i32 %0, i32 %1) {
+  // entry:
+  //   %3 = i32 10
+  //   %1 = i32 FunctionArg(1)
+  //   Use3 = i32 Add i32 %1, i32 %3
+  //   CallBuiltin "nullCheck"( i32 Use3) |-> %9
+  // 
+  // %9: /* Pred: entry */
+  //   %2 = i32 1
+  //   %0 = i32 FunctionArg(0)
+  //   %6 = i32 100
+  //   Use2 = i32 Mul i32 %0, i32 %2
+  //   %7 = i1 CmpLT i32 Use2, i32 %6
+  //   If i1 %7, T:B4, F:%13
+  // 
+  // %13: /* Pred: %9 */
+  //   CallBuiltin "nullCheck"( i32 Use3) |-> B5
+  // 
+  // B5: /* Pred: %13 */
+  //   Ret void B5, i32 Use2
+  // 
+  // B4: /* Pred: %9 */
+  //   Ret void B4, i32 Use3
+  // 
+  // exit:
+  // 
+  // }
   EXPECT_TRUE(F.verify());
   {
     Function::NamesMapTy Names = {

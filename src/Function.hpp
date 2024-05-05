@@ -63,6 +63,7 @@ public:
   auto end() { return m_graph.end(); }
 
   auto getFnTy() const { return m_fnType; }
+  auto getName() const { return m_name; }
 
   Function copy() const;
 
